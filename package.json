@@ -13,8 +13,8 @@
     "clean": "taskkill /IM \"POS System.exe\" /F 2> nul || echo \"no process\" & rimraf release-builds",
     "electron:build": "npm run clean && npm run build && electron-builder",
     "postinstall": "electron-builder install-app-deps",
-    "package-win": "npm run build && electron-packager . \"POS System\" --platform=win32 --arch=x64 --out=release-builds --overwrite --asar=false --icon=assets/icon.ico --prune=true",
-    "package-win-l": "npm run clean && npm run build && electron-packager . \"POS System\" --platform=win32 --arch=x64 --out=release-builds --overwrite --asar=false --icon=assets/icon.ico --prune=true",
+    "package-win": "npm run build && electron-builder --win --x64",
+    "package-win-l": "npm run clean && npm run build && electron-packager . \"POS System\" --platform=win64 --arch=x64 --out=release-builds --overwrite --asar=false --icon=assets/icon.ico --prune=true",
     "dist": "npm run clean && npm run build && electron-builder --win --publish never",
     "make-installer": "npm run clean && npm run build && electron-builder --win nsis:x64"
   },
@@ -25,13 +25,8 @@
     "appId": "com.pos.electron",
     "productName": "POS System",
     "win": {
-      "target": [
-        "nsis",
-        "zip"
-      ],
-      "icon": "assets/icon.ico",
-      "sign": false,
-      "signingHashAlgorithms": null
+      "target": "portable",
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -89,7 +84,7 @@
     "wait-on": "^8.0.3"
   },
   "devDependencies": {
-    "electron": "^22.3.25",
+    "electron": "^29.0.0",
     "electron-builder": "^24.6.4",
     "electron-packager": "^17.1.2",
     "rimraf": "^6.0.1"

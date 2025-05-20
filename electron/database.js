@@ -287,7 +287,6 @@ function setupIpcHandlers() {
   // Add a handler to update an existing product
   ipcMain.handle('update-product', (event, product) => {
     const { id, barcode, name, price, stock, category_id } = product;
-    console.log(product);
     runExec(
       `
       UPDATE products 

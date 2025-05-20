@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 // const isDev = require('electron-is-dev');
-const { setupDatabase } = require('../electron/database');
+const { setupDatabase } = require(path.join(__dirname, '../electron/database'));
 
 // Keep a global reference of the window object
 let mainWindow;
