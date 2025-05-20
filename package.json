@@ -1,0 +1,98 @@
+{
+  "name": "pos-electron-react",
+  "version": "1.0.0",
+  "description": "Point of Sale application for small shops",
+  "main": "public/electron.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "electron:dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "clean": "taskkill /IM \"POS System.exe\" /F 2> nul || echo \"no process\" & rimraf release-builds",
+    "electron:build": "npm run clean && npm run build && electron-builder",
+    "postinstall": "electron-builder install-app-deps",
+    "package-win": "npm run build && electron-packager . \"POS System\" --platform=win32 --arch=x64 --out=release-builds --overwrite --asar=false --icon=assets/icon.ico --prune=true",
+    "package-win-l": "npm run clean && npm run build && electron-packager . \"POS System\" --platform=win32 --arch=x64 --out=release-builds --overwrite --asar=false --icon=assets/icon.ico --prune=true",
+    "dist": "npm run clean && npm run build && electron-builder --win --publish never",
+    "make-installer": "npm run clean && npm run build && electron-builder --win nsis:x64"
+  },
+  "build": {
+    "directories": {
+      "output": "release-builds"
+    },
+    "appId": "com.pos.electron",
+    "productName": "POS System",
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "assets/icon.ico",
+      "sign": false,
+      "signingHashAlgorithms": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "POS System",
+      "artifactName": "POS-System-Setup-${version}.${ext}"
+    },
+    "files": [
+      "build/**/*",
+      "node_modules/**/*",
+      "package.json",
+      "public/electron.js",
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "forceCodeSigning": false,
+    "asar": true
+  },
+  "author": "",
+  "license": "ISC",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^7.1.0",
+    "@mui/material": "^7.1.0",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron-is-dev": "^3.0.1",
+    "electron-store": "^10.0.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.0",
+    "react-scripts": "^5.0.1",
+    "sql.js": "^1.8.0",
+    "wait-on": "^8.0.3"
+  },
+  "devDependencies": {
+    "electron": "^22.3.25",
+    "electron-builder": "^24.6.4",
+    "electron-packager": "^17.1.2",
+    "rimraf": "^6.0.1"
+  }
+}
+
