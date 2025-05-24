@@ -7,6 +7,7 @@ import POSScreen from './screens/POSScreen.js';
 import InventoryScreen from './screens/InventoryScreen.js';
 import ReportScreen from './screens/ReportScreen.js';
 import DatabaseScreen from './screens/DatabaseScreen.js';
+import SettingsScreen from './screens/SettingsScreen.js';
 
 // Import contexts
 import { ProductProvider } from './contexts/ProductContext.js';
@@ -22,10 +23,11 @@ function App() {
               <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                 POS System
               </Typography>
-              <Button color="inherit" component={Link} to="/">POS</Button>
-              <Button color="inherit" component={Link} to="/inventory">Inventory</Button>
-              <Button color="inherit" component={Link} to="/reports">Reports</Button>
-              <Button color="inherit" component={Link} to="/database">Database</Button>
+              <Button color="inherit" component={Link} to="/">Satış</Button>
+              <Button color="inherit" component={Link} to="/inventory">Stok</Button>
+              <Button color="inherit" component={Link} to="/reports">Raporlar</Button>
+              <Button color="inherit" component={Link} to="/database">Veritabanı</Button>
+              <Button color="inherit" component={Link} to="/settings">Ayarlar</Button>
             </Toolbar>
           </AppBar>
           
@@ -35,6 +37,7 @@ function App() {
               <Route path="/inventory" element={<InventoryScreen />} />
               <Route path="/reports" element={<ReportScreen />} />
               <Route path="/database" element={<DatabaseScreen />} />
+              <Route path="/settings" element={<SettingsScreen />} />
             </Routes>
           </Container>
         </Router>

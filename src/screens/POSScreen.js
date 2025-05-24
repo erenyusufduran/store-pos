@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   Box,
   Grid,
@@ -22,18 +22,21 @@ import {
   FormControl,
   InputLabel,
   Stack,
-  Chip
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
-import CancelIcon from '@mui/icons-material/Cancel';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import { useProducts } from '../contexts/ProductContext.js';
-import { useSales } from '../contexts/SalesContext.js';
+  Chip,
+  InputAdornment,
+  FormControlLabel,
+  Checkbox,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import CancelIcon from "@mui/icons-material/Cancel";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import { useProducts } from "../contexts/ProductContext.js";
+import { useSales } from "../contexts/SalesContext.js";
 
 // Main BarcodeScanner component
 const BarcodeScanner = ({ onProductScanned }) => {
-  const [barcode, setBarcode] = useState('');
+  const [barcode, setBarcode] = useState("");
   const inputRef = useRef(null);
 
   // Keep focus on the barcode input
@@ -47,20 +50,20 @@ const BarcodeScanner = ({ onProductScanned }) => {
     focusInput();
 
     // Focus the input when window is clicked
-    window.addEventListener('enter', focusInput);
+    window.addEventListener("enter", focusInput);
 
     return () => {
-      window.removeEventListener('enter', focusInput);
+      window.removeEventListener("enter", focusInput);
     };
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (barcode.trim() === '') return;
+    if (barcode.trim() === "") return;
 
     await onProductScanned(barcode);
-    setBarcode('');
+    setBarcode("");
   };
 
   return (
@@ -84,17 +87,29 @@ const BarcodeScanner = ({ onProductScanned }) => {
 };
 
 // New Product Dialog
-const NewProductDialog = ({ open, onClose, onAddProduct, initialBarcode, categories: availableCategories }) => {
-  const [product, setProduct] = useState({ barcode: '', name: '', price: '', stock: 1, category_id: '' });
+const NewProductDialog = ({
+  open,
+  onClose,
+  onAddProduct,
+  initialBarcode,
+  categories: availableCategories,
+}) => {
+  const [product, setProduct] = useState({
+    barcode: "",
+    name: "",
+    price: "",
+    stock: 1,
+    category_id: "",
+  });
 
   useEffect(() => {
     if (open) {
       setProduct({
-        barcode: initialBarcode || '',
-        name: '',
-        price: '',
+        barcode: initialBarcode || "",
+        name: "",
+        price: "",
         stock: 1,
-        category_id: ''
+        category_id: "",
       });
     }
   }, [open, initialBarcode]);
@@ -110,11 +125,11 @@ const NewProductDialog = ({ open, onClose, onAddProduct, initialBarcode, categor
         ...product,
         price: parseFloat(product.price) || 0,
         stock: parseInt(product.stock) || 0,
-        category_id: product.category_id || null
+        category_id: product.category_id || null,
       });
       onClose();
     } catch (error) {
-      console.error('Ürün eklenirken hata:', error);
+      console.error("Ürün eklenirken hata:", error);
     }
   };
 
@@ -142,7 +157,15 @@ const NewProductDialog = ({ open, onClose, onAddProduct, initialBarcode, categor
           onChange={handleChange}
           autoFocus
         />
-        <TextField margin="dense" label="Fiyat" type="number" fullWidth name="price" value={product.price} onChange={handleChange} />
+        <TextField
+          margin="dense"
+          label="Fiyat"
+          type="number"
+          fullWidth
+          name="price"
+          value={product.price}
+          onChange={handleChange}
+        />
         <TextField
           margin="dense"
           label="Başlangıç Stok"
@@ -188,11 +211,11 @@ const NewProductDialog = ({ open, onClose, onAddProduct, initialBarcode, categor
 
 // New CategoryDialog component
 const CategoryDialog = ({ open, onClose, onAddCategory }) => {
-  const [categoryName, setCategoryName] = useState('');
+  const [categoryName, setCategoryName] = useState("");
 
   useEffect(() => {
     if (open) {
-      setCategoryName('');
+      setCategoryName("");
     }
   }, [open]);
 
@@ -203,7 +226,7 @@ const CategoryDialog = ({ open, onClose, onAddCategory }) => {
       await onAddCategory(categoryName);
       onClose();
     } catch (error) {
-      console.error('Kategori eklenirken hata:', error);
+      console.error("Kategori eklenirken hata:", error);
     }
   };
 
@@ -225,7 +248,11 @@ const CategoryDialog = ({ open, onClose, onAddCategory }) => {
         <Button onClick={onClose} color="primary">
           İptal
         </Button>
-        <Button onClick={handleSubmit} color="primary" disabled={!categoryName.trim()}>
+        <Button
+          onClick={handleSubmit}
+          color="primary"
+          disabled={!categoryName.trim()}
+        >
           Kategori Ekle
         </Button>
       </DialogActions>
@@ -235,22 +262,69 @@ const CategoryDialog = ({ open, onClose, onAddCategory }) => {
 
 // POSScreen component
 function POSScreen() {
-  const { getProductByBarcode, popularProducts, categories, getProductsByCategory, addProduct, refreshPopularProducts, addCategory } =
-    useProducts();
-  const { currentSale, addItemToSale, updateItemQuantity, removeItemFromSale, clearSale, completeSale, getTotalAmount } = useSales();
+  const {
+    getProductByBarcode,
+    popularProducts,
+    categories,
+    getProductsByCategory,
+    addProduct,
+    refreshPopularProducts,
+    addCategory,
+  } = useProducts();
+  const {
+    currentSale,
+    addItemToSale,
+    updateItemQuantity,
+    removeItemFromSale,
+    clearSale,
+    completeSale,
+    getTotalAmount,
+  } = useSales();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryProducts, setCategoryProducts] = useState([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newProductBarcode, setNewProductBarcode] = useState('');
-  const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
+  const [newProductBarcode, setNewProductBarcode] = useState("");
+  const [notification, setNotification] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [settings, setSettings] = useState({
+    storeName: "",
+    storeAddress: "",
+    storePhone: "",
+    taxRate: 0,
+    receiptFooter: "",
+    backupLocation: "",
+    backstageMarginPercent: 0,
+  });
+  const [isBackstage, setIsBackstage] = useState(false);
+
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedSettings = await window.api.getSettings();
+        setSettings(savedSettings || { backstageMarginPercent: 0 });
+      } catch (error) {
+        console.error("Ayarları yüklerken hata:", error);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Handle barcode scanning
   const handleProductScanned = async (barcode) => {
     const product = await getProductByBarcode(barcode);
 
     if (product) {
-      addItemToSale(product);
+      const backstagePrice =
+        product.price * (1 + settings.backstageMarginPercent / 100);
+      addItemToSale({
+        ...product,
+        price: isBackstage ? backstagePrice : product.price,
+      });
     } else {
       // Show dialog to add new product
       setNewProductBarcode(barcode);
@@ -277,19 +351,24 @@ function POSScreen() {
     try {
       const newProduct = await addProduct(productData);
       setShowAddDialog(false);
-      setNewProductBarcode('');
-      addItemToSale(newProduct);
+      setNewProductBarcode("");
+      const backstagePrice =
+        newProduct.price * (1 + settings.backstageMarginPercent / 100);
+      addItemToSale({
+        ...newProduct,
+        price: isBackstage ? backstagePrice : newProduct.price,
+      });
       await refreshPopularProducts();
       setNotification({
         open: true,
-        message: 'Ürün başarıyla eklendi',
-        severity: 'success'
+        message: "Ürün başarıyla eklendi",
+        severity: "success",
       });
     } catch (error) {
       setNotification({
         open: true,
-        message: 'Ürün eklenemedi',
-        severity: 'error'
+        message: "Ürün eklenemedi",
+        severity: "error",
       });
     }
   };
@@ -299,37 +378,43 @@ function POSScreen() {
     if (currentSale.length === 0) {
       setNotification({
         open: true,
-        message: 'Satışta hiç ürün yok',
-        severity: 'warning'
+        message: "Satışta hiç ürün yok",
+        severity: "warning",
       });
       return;
     }
 
-    const success = await completeSale(paymentType);
+    const success = await completeSale(
+      paymentType,
+      isBackstage,
+      settings.backstageMarginPercent
+    );
 
     if (success) {
       setNotification({
         open: true,
-        message: `Satış ${paymentType === 'cash' ? 'nakit' : 'kart'} ile tamamlandı`,
-        severity: 'success'
+        message: `Satış ${
+          paymentType === "cash" ? "nakit" : "kart"
+        } ile tamamlandı`,
+        severity: "success",
       });
       await refreshPopularProducts();
     } else {
       setNotification({
         open: true,
-        message: 'Satış tamamlanamadı',
-        severity: 'error'
+        message: "Satış tamamlanamadı",
+        severity: "error",
       });
     }
   };
 
   // Handle adding a new category
   const handleAddCategory = async (categoryName) => {
-    if (!categoryName || categoryName.trim() === '') {
+    if (!categoryName || categoryName.trim() === "") {
       setNotification({
         open: true,
-        message: 'Kategori adı boş olamaz',
-        severity: 'error'
+        message: "Kategori adı boş olamaz",
+        severity: "error",
       });
       return;
     }
@@ -338,25 +423,49 @@ function POSScreen() {
       await addCategory(categoryName);
       setNotification({
         open: true,
-        message: 'Kategori başarıyla eklendi',
-        severity: 'success'
+        message: "Kategori başarıyla eklendi",
+        severity: "success",
       });
     } catch (error) {
-      console.error('Kategori eklenirken hata:', error);
+      console.error("Kategori eklenirken hata:", error);
       setNotification({
         open: true,
-        message: 'Kategori eklenemedi: ' + (error.message || 'Bilinmeyen hata'),
-        severity: 'error'
+        message: "Kategori eklenemedi: " + (error.message || "Bilinmeyen hata"),
+        severity: "error",
       });
     }
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setSettings((prev) => ({
+      ...prev,
+      [name]:
+        name === "taxRate" || name === "backstageMarginPercent"
+          ? parseFloat(value)
+          : value,
+    }));
+  };
+
   return (
-    <Box sx={{ height: '100vh', width: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Grid container spacing={2} sx={{ flexGrow: 1, height: 'calc(100vh - 16px)' }}>
+    <Box
+      sx={{
+        height: "100vh",
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <Grid
+        container
+        spacing={2}
+        sx={{ flexGrow: 1, height: "calc(100vh - 16px)" }}
+      >
         {/* Left panel: POS functionality */}
-        <Grid item xs={6} sx={{ height: '100%', p: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Grid item xs={6} sx={{ height: "100%", p: 2 }}>
+          <Box
+            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+          >
             <Paper sx={{ p: 2, mb: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Ürün Tara
@@ -367,39 +476,74 @@ function POSScreen() {
                   const barcodeInput = e.target.elements.barcode;
                   if (barcodeInput && barcodeInput.value) {
                     handleProductScanned(barcodeInput.value);
-                    barcodeInput.value = '';
+                    barcodeInput.value = "";
                   }
                 }}
               >
-                <TextField fullWidth name="barcode" label="Barkod" variant="outlined" autoFocus />
+                <TextField
+                  fullWidth
+                  name="barcode"
+                  label="Barkod"
+                  variant="outlined"
+                  autoFocus
+                />
               </form>
             </Paper>
 
-            <Paper sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Paper
+              sx={{
+                p: 2,
+                flexGrow: 1,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }}
+            >
               <Typography variant="h6" gutterBottom>
                 Mevcut Satış
               </Typography>
 
               {currentSale.length === 0 ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexGrow: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    flexGrow: 1,
+                  }}
+                >
                   <Typography variant="body1" align="center">
-                    Henüz ürün eklenmedi. Ürünleri tarayın veya kategorilerden seçin.
+                    Henüz ürün eklenmedi. Ürünleri tarayın veya kategorilerden
+                    seçin.
                   </Typography>
                 </Box>
               ) : (
-                <List sx={{ flexGrow: 1, overflow: 'auto' }}>
+                <List sx={{ flexGrow: 1, overflow: "auto" }}>
                   {currentSale.map((item) => (
                     <React.Fragment key={item.id}>
                       <ListItem
                         secondaryAction={
                           <Box>
-                            <IconButton edge="end" onClick={() => updateItemQuantity(item.id, item.quantity - 1)}>
+                            <IconButton
+                              edge="end"
+                              onClick={() =>
+                                updateItemQuantity(item.id, item.quantity - 1)
+                              }
+                            >
                               <RemoveIcon />
                             </IconButton>
-                            <IconButton edge="end" onClick={() => updateItemQuantity(item.id, item.quantity + 1)}>
+                            <IconButton
+                              edge="end"
+                              onClick={() =>
+                                updateItemQuantity(item.id, item.quantity + 1)
+                              }
+                            >
                               <AddIcon />
                             </IconButton>
-                            <IconButton edge="end" onClick={() => removeItemFromSale(item.id)}>
+                            <IconButton
+                              edge="end"
+                              onClick={() => removeItemFromSale(item.id)}
+                            >
                               <CancelIcon />
                             </IconButton>
                           </Box>
@@ -410,10 +554,15 @@ function POSScreen() {
                           secondary={
                             <>
                               <Typography variant="body2" component="span">
-                                {item.price} ₺ × {item.quantity} = {(item.price * item.quantity).toFixed(2)} ₺
+                                {item.price} ₺ × {item.quantity} ={" "}
+                                {(item.price * item.quantity).toFixed(2)} ₺
                               </Typography>
                               <br />
-                              <Typography variant="caption" component="span" color="textSecondary">
+                              <Typography
+                                variant="caption"
+                                component="span"
+                                color="textSecondary"
+                              >
                                 Barkod: {item.barcode}
                               </Typography>
                             </>
@@ -428,19 +577,64 @@ function POSScreen() {
 
               {currentSale.length > 0 && (
                 <Box sx={{ mb: 20 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={isBackstage}
+                          onChange={(e) => setIsBackstage(e.target.checked)}
+                        />
+                      }
+                      label="Backstage Satış"
+                    />
+                  </Box>
+
                   <Typography variant="h6" gutterBottom>
                     Toplam: {getTotalAmount().toFixed(2)} ₺
                   </Typography>
+                  {isBackstage && (
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
+                      Backstage Fiyatı:{" "}
+                      {(
+                        getTotalAmount() *
+                        (1 + settings.backstageMarginPercent / 100)
+                      ).toFixed(2)}{" "}
+                      ₺
+                    </Typography>
+                  )}
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-                    <Button variant="outlined" color="secondary" onClick={clearSale}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      mt: 2,
+                    }}
+                  >
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      onClick={clearSale}
+                    >
                       Temizle
                     </Button>
-                    <Box sx={{ display: 'flex' }}>
-                      <Button variant="contained" color="primary" sx={{ mr: 1 }} onClick={() => handleCompleteSale('cash')}>
+                    <Box sx={{ display: "flex" }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        sx={{ mr: 1 }}
+                        onClick={() => handleCompleteSale("cash")}
+                      >
                         Nakit Ödeme
                       </Button>
-                      <Button variant="contained" color="primary" onClick={() => handleCompleteSale('card')}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleCompleteSale("card")}
+                      >
                         Kart Ödeme
                       </Button>
                     </Box>
@@ -452,58 +646,86 @@ function POSScreen() {
         </Grid>
 
         {/* Right panel: Categories and products */}
-        <Grid item xs={6} sx={{ height: '100%', p: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Grid item xs={6} sx={{ height: "100%", p: 2 }}>
+          <Box
+            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+          >
             {/* Categories at the top */}
-            <Paper sx={{ p: 2, mb: 2, width: '800px', height: '120px' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Paper sx={{ p: 2, mb: 2, width: "800px", height: "120px" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1,
+                }}
+              >
                 <Typography variant="h6">Kategoriler</Typography>
-                <IconButton color="primary" onClick={() => setShowCategoryDialog(true)} size="small" title="Yeni kategori ekle">
+                <IconButton
+                  color="primary"
+                  onClick={() => setShowCategoryDialog(true)}
+                  size="small"
+                  title="Yeni kategori ekle"
+                >
                   <AddCircleOutlineIcon />
                 </IconButton>
               </Box>
               <Box
                 sx={{
-                  width: '100%',
-                  overflowX: 'auto',
-                  overflowY: 'hidden',
-                  display: 'flex',
+                  width: "100%",
+                  overflowX: "auto",
+                  overflowY: "hidden",
+                  display: "flex",
                   pb: 1,
-                  '&::-webkit-scrollbar': {
-                    height: '8px'
+                  "&::-webkit-scrollbar": {
+                    height: "8px",
                   },
-                  '&::-webkit-scrollbar-thumb': {
-                    backgroundColor: 'rgba(0,0,0,0.2)',
-                    borderRadius: '4px'
-                  }
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: "rgba(0,0,0,0.2)",
+                    borderRadius: "4px",
+                  },
                 }}
               >
                 <Stack
                   direction="row"
                   spacing={1}
                   sx={{
-                    flexWrap: 'nowrap',
-                    minWidth: 'min-content'
+                    flexWrap: "nowrap",
+                    minWidth: "min-content",
                   }}
                 >
                   <Chip
-                    label={'Tümü'}
-                    color={selectedCategory === null ? 'primary' : 'default'}
-                    onClick={() => setSelectedCategory(selectedCategory === null ? null : null)}
+                    label={"Tümü"}
+                    color={selectedCategory === null ? "primary" : "default"}
+                    onClick={() =>
+                      setSelectedCategory(
+                        selectedCategory === null ? null : null
+                      )
+                    }
                     sx={{ flexShrink: 0 }}
                   />
                   {categories.map((category) => (
                     <Chip
                       key={category.id}
                       label={category.name}
-                      color={selectedCategory === category.id ? 'primary' : 'default'}
-                      onClick={() => setSelectedCategory(selectedCategory === category.id ? null : category.id)}
+                      color={
+                        selectedCategory === category.id ? "primary" : "default"
+                      }
+                      onClick={() =>
+                        setSelectedCategory(
+                          selectedCategory === category.id ? null : category.id
+                        )
+                      }
                       sx={{ flexShrink: 0 }}
                     />
                   ))}
 
                   {categories.length === 0 && (
-                    <Typography variant="body2" align="center" sx={{ width: '100%' }}>
+                    <Typography
+                      variant="body2"
+                      align="center"
+                      sx={{ width: "100%" }}
+                    >
                       Henüz kategori yok. + düğmesini kullanarak ekleyin.
                     </Typography>
                   )}
@@ -512,47 +734,77 @@ function POSScreen() {
             </Paper>
 
             {/* Products section */}
-            <Paper sx={{ p: 2, flexGrow: 1, width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <Paper
+              sx={{
+                p: 2,
+                flexGrow: 1,
+                width: "100%",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <Typography variant="h6" gutterBottom>
                 {selectedCategory
-                  ? `${categories.find((c) => c.id === selectedCategory)?.name || 'Kategori'} Ürünleri`
-                  : 'Popüler Ürünler'}
+                  ? `${
+                      categories.find((c) => c.id === selectedCategory)?.name ||
+                      "Kategori"
+                    } Ürünleri`
+                  : "Popüler Ürünler"}
               </Typography>
 
-              <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+              <Box sx={{ flexGrow: 1, overflow: "auto" }}>
                 <Grid container spacing={1}>
-                  {(selectedCategory ? categoryProducts : popularProducts).map((product) => (
-                    <Grid item xs={4} sm={3} key={product.id}>
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        sx={{
-                          height: '100%',
-                          justifyContent: 'flex-start',
-                          textAlign: 'left',
-                          textTransform: 'none',
-                          p: 1
-                        }}
-                        onClick={() => addItemToSale(product)}
-                      >
-                        <Box>
-                          <Typography variant="body2" noWrap>
-                            {product.name}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {product.price} ₺
-                          </Typography>
-                        </Box>
-                      </Button>
-                    </Grid>
-                  ))}
+                  {(selectedCategory ? categoryProducts : popularProducts).map(
+                    (product) => (
+                      <Grid item xs={4} sm={3} key={product.id}>
+                        <Button
+                          variant="outlined"
+                          fullWidth
+                          sx={{
+                            height: "100%",
+                            justifyContent: "flex-start",
+                            textAlign: "left",
+                            textTransform: "none",
+                            p: 1,
+                          }}
+                          onClick={() => {
+                            const backstagePrice =
+                              product.price *
+                              (1 + settings.backstageMarginPercent / 100);
+                            addItemToSale({
+                              ...product,
+                              price: isBackstage
+                                ? backstagePrice
+                                : product.price,
+                            });
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" noWrap>
+                              {product.name}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {isBackstage
+                                ? `${(
+                                    product.price *
+                                    (1 + settings.backstageMarginPercent / 100)
+                                  ).toFixed(2)} ₺`
+                                : `${product.price} ₺`}
+                            </Typography>
+                          </Box>
+                        </Button>
+                      </Grid>
+                    )
+                  )}
 
-                  {(selectedCategory ? categoryProducts : popularProducts).length === 0 && (
+                  {(selectedCategory ? categoryProducts : popularProducts)
+                    .length === 0 && (
                     <Grid item xs={12}>
                       <Typography variant="body1" align="center" sx={{ p: 4 }}>
                         {selectedCategory
-                          ? 'Bu kategoride ürün bulunamadı.'
-                          : 'Henüz popüler ürün yok. Satış yapmaya başlayın!'}
+                          ? "Bu kategoride ürün bulunamadı."
+                          : "Henüz popüler ürün yok. Satış yapmaya başlayın!"}
                       </Typography>
                     </Grid>
                   )}
@@ -568,7 +820,7 @@ function POSScreen() {
         open={showAddDialog}
         onClose={() => {
           setShowAddDialog(false);
-          setNewProductBarcode('');
+          setNewProductBarcode("");
         }}
         onAddProduct={handleAddProduct}
         initialBarcode={newProductBarcode}
@@ -587,9 +839,12 @@ function POSScreen() {
         open={notification.open}
         autoHideDuration={6000}
         onClose={() => setNotification({ ...notification, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert onClose={() => setNotification({ ...notification, open: false })} severity={notification.severity}>
+        <Alert
+          onClose={() => setNotification({ ...notification, open: false })}
+          severity={notification.severity}
+        >
           {notification.message}
         </Alert>
       </Snackbar>
@@ -598,4 +853,3 @@ function POSScreen() {
 }
 
 export default POSScreen;
-

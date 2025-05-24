@@ -144,7 +144,7 @@ function DatabaseScreen() {
   return (
     <Box>
       <Typography variant="h5" gutterBottom>
-        Database Management
+        Veritabanı Yönetimi
       </Typography>
       
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
@@ -153,7 +153,7 @@ function DatabaseScreen() {
           startIcon={<DownloadIcon />}
           onClick={handleExportDatabase}
         >
-          Export Database as JSON
+          Veritabanını JSON olarak dışa aktar
         </Button>
         <Button 
           variant="contained" 
@@ -161,7 +161,7 @@ function DatabaseScreen() {
           startIcon={<BackupIcon />}
           onClick={handleBackupDatabase}
         >
-          Backup Database
+          Veritabanını yedekle
         </Button>
       </Box>
       
