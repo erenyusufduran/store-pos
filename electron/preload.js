@@ -7,7 +7,8 @@ contextBridge.exposeInMainWorld('api', {
   getProductByBarcode: (barcode) => ipcRenderer.invoke('get-product-by-barcode', barcode),
   getPopularProducts: (limit) => ipcRenderer.invoke('get-popular-products', limit),
   getProductsByCategory: (categoryId) => ipcRenderer.invoke('get-products-by-category', categoryId),
-  getProducts: () => ipcRenderer.invoke('get-products'),
+  getProducts: (params) => ipcRenderer.invoke('get-products', params),
+  getProductsCount: (params) => ipcRenderer.invoke('get-products-count', params),
   addProduct: (product) => ipcRenderer.invoke('add-product', product),
   updateProductStock: (data) => ipcRenderer.invoke('update-product-stock', data),
   
@@ -31,4 +32,8 @@ contextBridge.exposeInMainWorld('api', {
   exportDatabase: () => ipcRenderer.invoke('export-database'),
   getTableData: (tableName) => ipcRenderer.invoke('get-table-data', tableName),
   backupDatabase: (backupPath) => ipcRenderer.invoke('backup-database', backupPath),
+
+  // Settings operations
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
 }); 

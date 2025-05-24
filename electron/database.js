@@ -1,7 +1,12 @@
 const path = require('path');
 const fs = require('fs');
-const initSqlJs = require('sql.js');
 const { app, ipcMain } = require('electron');
+const { setupDatabase } = require('./database/setup');
+const setupProductHandlers = require('./handlers/productHandlers');
+const setupSaleHandlers = require('./handlers/saleHandlers');
+const setupCategoryHandlers = require('./handlers/categoryHandlers');
+const setupDatabaseHandlers = require('./handlers/databaseHandlers');
+const setupSettingsHandlers = require('./handlers/settingsHandlers');
 
 // Get the database directory path
 const dbDir = path.join(app.getPath('userData'), 'database');
@@ -14,67 +19,15 @@ if (!fs.existsSync(dbDir)) {
 const dbPath = path.join(dbDir, 'pos.db');
 let db;
 
-async function setupDatabase() {
-  // Initialize SQL.js
-  const SQL = await initSqlJs();
+async function initializeDatabase() {
+  await setupDatabase();
   
-  // Load database from file if it exists, otherwise create a new one
-  let buffer;
-  try {
-    if (fs.existsSync(dbPath)) {
-      buffer = fs.readFileSync(dbPath);
-      db = new SQL.Database(buffer);
-    } else {
-      db = new SQL.Database();
-    }
-  } catch (err) {
-    console.error('Error loading database:', err);
-    db = new SQL.Database();
-  }
-
-  // Create tables if they don't exist
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS categories (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    
-    CREATE TABLE IF NOT EXISTS products (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      barcode TEXT UNIQUE,
-      name TEXT NOT NULL,
-      price REAL NOT NULL,
-      stock INTEGER DEFAULT 0,
-      category_id INTEGER,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (category_id) REFERENCES categories (id)
-    );
-    
-    CREATE TABLE IF NOT EXISTS sales (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      total_amount REAL NOT NULL,
-      payment_type TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    
-    CREATE TABLE IF NOT EXISTS sale_items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      sale_id INTEGER,
-      product_id INTEGER,
-      quantity INTEGER NOT NULL,
-      price REAL NOT NULL,
-      FOREIGN KEY (sale_id) REFERENCES sales (id),
-      FOREIGN KEY (product_id) REFERENCES products (id)
-    );
-  `);
-
-  // Save the database to disk
-  saveDatabase();
-
-  setupIpcHandlers();
-
-  return db;
+  // Setup all handlers
+  setupProductHandlers();
+  setupSaleHandlers();
+  setupCategoryHandlers();
+  setupDatabaseHandlers();
+  setupSettingsHandlers();
 }
 
 // Helper function to save the database to disk
@@ -299,8 +252,61 @@ function setupIpcHandlers() {
     return product;
   });
 
-  ipcMain.handle('get-products', () => {
-    return runQuery('SELECT * FROM products ORDER BY name ASC');
+  ipcMain.handle('get-products', (event, params = {}) => {
+    const { page = 1, limit = 50, filters = {} } = params;
+    console.log('get-products called with:', { page, limit, filters });
+    
+    const offset = (page - 1) * limit;
+    let query = 'SELECT * FROM products';
+    let countQuery = 'SELECT COUNT(*) as total FROM products';
+    const queryParams = [];
+    const whereConditions = [];
+
+    // Apply filters
+    if (filters.category) {
+      whereConditions.push('category_id = ?');
+      queryParams.push(filters.category);
+    }
+    if (filters.barcode) {
+      whereConditions.push('barcode LIKE ?');
+      queryParams.push(`%${filters.barcode}%`);
+    }
+    if (filters.name) {
+      whereConditions.push('name LIKE ?');
+      queryParams.push(`%${filters.name}%`);
+    }
+    if (filters.price) {
+      whereConditions.push('price LIKE ?');
+      queryParams.push(`%${filters.price}%`);
+    }
+    if (filters.purchasePrice) {
+      whereConditions.push('purchase_price LIKE ?');
+      queryParams.push(`%${filters.purchasePrice}%`);
+    }
+
+    // Add WHERE clause if there are filters
+    if (whereConditions.length > 0) {
+      const whereClause = ' WHERE ' + whereConditions.join(' AND ');
+      query += whereClause;
+      countQuery += whereClause;
+    }
+
+    // Add ORDER BY and LIMIT
+    query += ' ORDER BY name ASC LIMIT ? OFFSET ?';
+    queryParams.push(limit, offset);
+
+    console.log('Executing queries:', { query, countQuery, params: queryParams });
+
+    // Get total count
+    const total = runQuerySingle(countQuery, queryParams.slice(0, -2));
+    const products = runQuery(query, queryParams);
+
+    console.log('Query results:', { total, productsCount: products.length });
+
+    return {
+      products,
+      total: total.total
+    };
   });
 
   // Add a handler to delete a product
@@ -393,5 +399,5 @@ function setupIpcHandlers() {
 }
 
 module.exports = {
-  setupDatabase
+  setupDatabase: initializeDatabase
 };
