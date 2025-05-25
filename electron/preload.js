@@ -36,4 +36,8 @@ contextBridge.exposeInMainWorld('api', {
   // Settings operations
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+
+  // Authentication operations
+  verifyPassword: (password) => ipcRenderer.invoke('verify-password', password),
+  changePassword: (newPassword) => ipcRenderer.invoke('change-password', newPassword),
 }); 

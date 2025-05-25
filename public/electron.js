@@ -37,8 +37,8 @@ function createWindow() {
 }
 
 app.whenReady()
-  .then(() => {
-    setupDatabase();
+  .then(async () => {
+    await setupDatabase();
     createWindow();
   });
 

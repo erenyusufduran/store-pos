@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Grid, Paper, Typography, TextField, Button, InputAdornment } from '@mui/material';
+import { Box, Grid, Paper, Typography, TextField, Button, InputAdornment, Divider, Stack } from '@mui/material';
 import { CircularProgress } from '@mui/material';
 import { Snackbar } from '@mui/material';
 import { Alert } from '@mui/material';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 function SettingsScreen() {
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
   const [settings, setSettings] = useState({
-    backstageMarginPercent: 0
+    backstageMarginPercent: 0,
+    adminPassword: ''
   });
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
 
@@ -18,7 +25,8 @@ function SettingsScreen() {
         setLoading(true);
         const savedSettings = await window.api.getSettings();
         setSettings(savedSettings || {
-          backstageMarginPercent: 0
+          backstageMarginPercent: 0,
+          adminPassword: ''
         });
       } catch (error) {
         console.error('Ayarları yüklerken hata:', error);
@@ -63,6 +71,49 @@ function SettingsScreen() {
     }
   };
 
+  // Handle password change
+  const handlePasswordChange = async () => {
+    if (newPassword !== confirmPassword) {
+      setNotification({
+        open: true,
+        message: 'Şifreler eşleşmiyor!',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      await window.api.saveSettings({
+        ...settings,
+        adminPassword: newPassword
+      });
+      setNewPassword('');
+      setConfirmPassword('');
+      setNotification({
+        open: true,
+        message: 'Şifre başarıyla değiştirildi',
+        severity: 'success'
+      });
+    } catch (error) {
+      setNotification({
+        open: true,
+        message: 'Şifre değiştirilemedi',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    setNotification({
+      open: true,
+      message: 'Başarıyla çıkış yapıldı',
+      severity: 'success'
+    });
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -101,6 +152,57 @@ function SettingsScreen() {
               <Button variant="contained" color="primary" onClick={handleSave}>
                 Ayarları Kaydet
               </Button>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h5" gutterBottom>
+              Şifre Değiştir
+            </Typography>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Yeni Şifre"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Şifre Tekrar"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  margin="normal"
+                />
+              </Grid>
+            </Grid>
+
+            <Box sx={{ mt: 3 }}>
+              <Stack direction="row" spacing={2}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={handlePasswordChange}
+                  disabled={!newPassword || !confirmPassword}
+                >
+                  Şifreyi Değiştir
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="error" 
+                  onClick={handleLogout}
+                >
+                  Çıkış Yap
+                </Button>
+              </Stack>
             </Box>
           </Paper>
         </Grid>

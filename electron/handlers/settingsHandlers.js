@@ -56,6 +56,39 @@ function setupSettingsHandlers() {
       throw error;
     }
   });
+
+  // Verify password
+  ipcMain.handle('verify-password', async (event, password) => {
+    try {
+      const settings = runQuery('SELECT value FROM settings WHERE key = ?', ['adminPassword']);
+      if (settings.length === 0) {
+        // If no password is set, set the default one
+        runExec(
+          'INSERT INTO settings (key, value) VALUES (?, ?)',
+          ['adminPassword', 'admin123']
+        );
+        return password === 'admin123';
+      }
+      return password === settings[0].value;
+    } catch (error) {
+      console.error('Error verifying password:', error);
+      throw error;
+    }
+  });
+
+  // Change password
+  ipcMain.handle('change-password', async (event, newPassword) => {
+    try {
+      runExec(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+        ['adminPassword', newPassword]
+      );
+      return true;
+    } catch (error) {
+      console.error('Error changing password:', error);
+      throw error;
+    }
+  });
 }
 
 module.exports = setupSettingsHandlers; 
