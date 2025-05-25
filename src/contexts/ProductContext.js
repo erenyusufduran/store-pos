@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 
 const ProductContext = createContext();
 
@@ -104,7 +104,7 @@ export function ProductProvider({ children }) {
     }
   };
 
-  const getProducts = async (params) => {
+  const getProducts = useCallback(async (params) => {
     try {
       if (!params) {
         params = { page: 1, limit: 50, filters: {} };
@@ -118,7 +118,19 @@ export function ProductProvider({ children }) {
       console.error("Error fetching products:", error);
       return [];
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const loadAllProducts = async () => {
+      try {
+        const products = await getProducts();
+        setAllProducts(products || []);
+      } catch (error) {
+        console.error("Error loading all products:", error);
+      }
+    };
+    loadAllProducts();
+  }, [getProducts]);
 
   const addCategory = async (categoryName) => {
     try {
@@ -157,20 +169,6 @@ export function ProductProvider({ children }) {
       throw error;
     }
   };
-
-  useEffect(() => {
-    const loadAllProducts = async () => {
-      try {
-        if (getProducts) {
-          const products = await getProducts();
-          setAllProducts(products || []);
-        }
-      } catch (error) {
-        console.error("Error loading all products:", error);
-      }
-    };
-    loadAllProducts();
-  }, [getProducts]);
 
   const value = {
     products,

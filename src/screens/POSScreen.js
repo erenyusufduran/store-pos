@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Box,
   Grid,
@@ -35,7 +35,7 @@ import { useProducts } from "../contexts/ProductContext.js";
 import { useSales } from "../contexts/SalesContext.js";
 
 // Main BarcodeScanner component
-const BarcodeScanner = ({ onProductScanned }) => {
+const BarcodeScanner = React.memo(({ onProductScanned }) => {
   const [barcode, setBarcode] = useState("");
   const inputRef = useRef(null);
 
@@ -84,10 +84,10 @@ const BarcodeScanner = ({ onProductScanned }) => {
       </form>
     </Paper>
   );
-};
+});
 
 // New Product Dialog
-const NewProductDialog = ({
+const NewProductDialog = React.memo(({
   open,
   onClose,
   onAddProduct,
@@ -207,10 +207,10 @@ const NewProductDialog = ({
       </DialogActions>
     </Dialog>
   );
-};
+});
 
 // New CategoryDialog component
-const CategoryDialog = ({ open, onClose, onAddCategory }) => {
+const CategoryDialog = React.memo(({ open, onClose, onAddCategory }) => {
   const [categoryName, setCategoryName] = useState("");
 
   useEffect(() => {
@@ -258,7 +258,7 @@ const CategoryDialog = ({ open, onClose, onAddCategory }) => {
       </DialogActions>
     </Dialog>
   );
-};
+});
 
 // POSScreen component
 function POSScreen() {
@@ -314,46 +314,34 @@ function POSScreen() {
     loadSettings();
   }, []);
 
-  // Handle barcode scanning
-  const handleProductScanned = async (barcode) => {
+  // Memoize expensive calculations
+  const backstagePriceMultiplier = useMemo(() => 
+    1 + settings.backstageMarginPercent / 100, 
+    [settings.backstageMarginPercent]
+  );
+
+  // Memoize handlers
+  const handleProductScanned = useCallback(async (barcode) => {
     const product = await getProductByBarcode(barcode);
 
     if (product) {
-      const backstagePrice =
-        product.price * (1 + settings.backstageMarginPercent / 100);
+      const backstagePrice = product.price * backstagePriceMultiplier;
       addItemToSale({
         ...product,
         price: isBackstage ? backstagePrice : product.price,
       });
     } else {
-      // Show dialog to add new product
       setNewProductBarcode(barcode);
       setShowAddDialog(true);
     }
-  };
+  }, [getProductByBarcode, addItemToSale, isBackstage, backstagePriceMultiplier]);
 
-  // Load products when category is selected
-  useEffect(() => {
-    if (selectedCategory) {
-      const loadCategoryProducts = async () => {
-        const products = await getProductsByCategory(selectedCategory);
-        setCategoryProducts(products);
-      };
-
-      loadCategoryProducts();
-    } else {
-      setCategoryProducts([]);
-    }
-  }, [selectedCategory, getProductsByCategory]);
-
-  // Handle adding a new product
-  const handleAddProduct = async (productData) => {
+  const handleAddProduct = useCallback(async (productData) => {
     try {
       const newProduct = await addProduct(productData);
       setShowAddDialog(false);
       setNewProductBarcode("");
-      const backstagePrice =
-        newProduct.price * (1 + settings.backstageMarginPercent / 100);
+      const backstagePrice = newProduct.price * backstagePriceMultiplier;
       addItemToSale({
         ...newProduct,
         price: isBackstage ? backstagePrice : newProduct.price,
@@ -371,10 +359,9 @@ function POSScreen() {
         severity: "error",
       });
     }
-  };
+  }, [addProduct, addItemToSale, isBackstage, backstagePriceMultiplier, refreshPopularProducts]);
 
-  // Handle completing a sale
-  const handleCompleteSale = async (paymentType) => {
+  const handleCompleteSale = useCallback(async (paymentType) => {
     if (currentSale.length === 0) {
       setNotification({
         open: true,
@@ -393,9 +380,7 @@ function POSScreen() {
     if (success) {
       setNotification({
         open: true,
-        message: `Satış ${
-          paymentType === "cash" ? "nakit" : "kart"
-        } ile tamamlandı`,
+        message: `Satış ${paymentType === "cash" ? "nakit" : "kart"} ile tamamlandı`,
         severity: "success",
       });
       await refreshPopularProducts();
@@ -406,7 +391,27 @@ function POSScreen() {
         severity: "error",
       });
     }
-  };
+  }, [currentSale.length, completeSale, isBackstage, settings.backstageMarginPercent, refreshPopularProducts]);
+
+  // Memoize filtered products
+  const displayedProducts = useMemo(() => 
+    selectedCategory ? categoryProducts : popularProducts,
+    [selectedCategory, categoryProducts, popularProducts]
+  );
+
+  // Load products when category is selected
+  useEffect(() => {
+    if (selectedCategory) {
+      const loadCategoryProducts = async () => {
+        const products = await getProductsByCategory(selectedCategory);
+        setCategoryProducts(products);
+      };
+
+      loadCategoryProducts();
+    } else {
+      setCategoryProducts([]);
+    }
+  }, [selectedCategory, getProductsByCategory]);
 
   // Handle adding a new category
   const handleAddCategory = async (categoryName) => {
@@ -755,7 +760,7 @@ function POSScreen() {
 
               <Box sx={{ flexGrow: 1, overflow: "auto" }}>
                 <Grid container spacing={1}>
-                  {(selectedCategory ? categoryProducts : popularProducts).map(
+                  {displayedProducts.map(
                     (product) => (
                       <Grid item xs={4} sm={3} key={product.id}>
                         <Button
@@ -770,13 +775,10 @@ function POSScreen() {
                           }}
                           onClick={() => {
                             const backstagePrice =
-                              product.price *
-                              (1 + settings.backstageMarginPercent / 100);
+                              product.price * backstagePriceMultiplier;
                             addItemToSale({
                               ...product,
-                              price: isBackstage
-                                ? backstagePrice
-                                : product.price,
+                              price: isBackstage ? backstagePrice : product.price,
                             });
                           }}
                         >
@@ -798,8 +800,7 @@ function POSScreen() {
                     )
                   )}
 
-                  {(selectedCategory ? categoryProducts : popularProducts)
-                    .length === 0 && (
+                  {displayedProducts.length === 0 && (
                     <Grid item xs={12}>
                       <Typography variant="body1" align="center" sx={{ p: 4 }}>
                         {selectedCategory
@@ -852,4 +853,4 @@ function POSScreen() {
   );
 }
 
-export default POSScreen;
+export default React.memo(POSScreen);

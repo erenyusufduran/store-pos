@@ -73,7 +73,6 @@ export function AuthProvider({ children }) {
         open={showAuthModal} 
         onClose={handleCancel}
         disableEscapeKeyDown={false}
-        disableBackdropClick={false}
       >
         <DialogTitle>Şifre Gerekli</DialogTitle>
         <DialogContent>

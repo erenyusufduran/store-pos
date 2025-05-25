@@ -1,10 +1,20 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 // const isDev = require('electron-is-dev');
-const { setupDatabase } = require(path.join(__dirname, '../electron/database'));
+const { setupDatabase, cleanup } = require(path.join(__dirname, '../electron/database'));
 
 // Keep a global reference of the window object
 let mainWindow;
+
+// Handle any uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+// Handle any unhandled promise rejections
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
+});
 
 function createWindow() {
   const isDev = !app.isPackaged;
@@ -34,12 +44,33 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Handle window errors
+  mainWindow.webContents.on('crashed', (event) => {
+    console.error('Window crashed:', event);
+    // Optionally reload the window
+    mainWindow.reload();
+  });
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription);
+  });
 }
 
+// Initialize app
 app.whenReady()
   .then(async () => {
-    await setupDatabase();
-    createWindow();
+    try {
+      await setupDatabase();
+      createWindow();
+    } catch (error) {
+      console.error('Failed to initialize app:', error);
+      app.quit();
+    }
+  })
+  .catch((error) => {
+    console.error('Error during app initialization:', error);
+    app.quit();
   });
 
 // Quit when all windows are closed
@@ -53,4 +84,14 @@ app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
   }
+});
+
+// Handle app quit
+app.on('before-quit', () => {
+  // Clean up any resources here
+  if (mainWindow) {
+    mainWindow.removeAllListeners();
+  }
+  // Clean up database
+  cleanup();
 }); 

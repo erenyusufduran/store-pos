@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Box, Container } from '@mui/material';
 
@@ -18,8 +18,14 @@ import { AuthProvider, useAuth } from './contexts/AuthContext.js';
 function ProtectedRoute({ children }) {
   const { checkAuth } = useAuth();
   const currentPath = window.location.hash.slice(2); // Remove '#/' from the path
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
-  if (!checkAuth(currentPath)) {
+  useEffect(() => {
+    const authorized = checkAuth(currentPath);
+    setIsAuthorized(authorized);
+  }, [currentPath, checkAuth]);
+
+  if (!isAuthorized) {
     return null; // The AuthContext will handle showing the modal
   }
 

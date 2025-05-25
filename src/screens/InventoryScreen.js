@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -22,7 +22,6 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  
   IconButton,
   TablePagination,
 } from "@mui/material";
@@ -37,7 +36,6 @@ function InventoryScreen() {
     addProduct,
     updateProductStock,
     getProducts,
-    getProductsCount,
     updateProduct,
     deleteProduct,
   } = useProducts();
@@ -116,7 +114,8 @@ function InventoryScreen() {
     filterBarcode,
     filterName,
     filterPrice,
-    filterPurchasePrice
+    filterPurchasePrice,
+    getProducts
   ]);
 
   // Handle page change
@@ -161,12 +160,20 @@ function InventoryScreen() {
           purchase_price: "",
         });
 
-        // Refresh all products list
-        if (getProducts) {
-          const updatedProducts = await getProducts();
-          setDisplayedProducts(updatedProducts.products);
-          setTotalProducts(updatedProducts.total);
-        }
+        // Refresh products list
+        const { products, total } = await getProducts({
+          page: page,
+          limit: rowsPerPage,
+          filters: {
+            category: selectedCategory,
+            barcode: filterBarcode,
+            name: filterName,
+            price: filterPrice,
+            purchasePrice: filterPurchasePrice,
+          },
+        });
+        setDisplayedProducts(products);
+        setTotalProducts(total);
 
         setNotification({
           open: true,
@@ -191,12 +198,20 @@ function InventoryScreen() {
     try {
       await updateProductStock(productId, parseInt(newStock));
 
-      // Refresh all products list
-      if (getProducts) {
-        const updatedProducts = await getProducts();
-        setDisplayedProducts(updatedProducts.products);
-        setTotalProducts(updatedProducts.total);
-      }
+      // Refresh products list
+      const { products, total } = await getProducts({
+        page: page,
+        limit: rowsPerPage,
+        filters: {
+          category: selectedCategory,
+          barcode: filterBarcode,
+          name: filterName,
+          price: filterPrice,
+          purchasePrice: filterPurchasePrice,
+        },
+      });
+      setDisplayedProducts(products);
+      setTotalProducts(total);
 
       setNotification({
         open: true,
@@ -213,7 +228,7 @@ function InventoryScreen() {
     }
   };
 
-  // Handle updating a product's details (from Edit Product Dialog)
+  // Handle updating a product's details
   const handleUpdateProduct = async () => {
     if (!editingProduct) return;
     try {
@@ -228,12 +243,22 @@ function InventoryScreen() {
       await updateProduct(productDataToUpdate);
 
       setEditingProduct(null);
-      // Refresh all products list
-      if (getProducts) {
-        const updatedProducts = await getProducts();
-        setDisplayedProducts(updatedProducts.products);
-        setTotalProducts(updatedProducts.total);
-      }
+      
+      // Refresh products list
+      const { products, total } = await getProducts({
+        page: page,
+        limit: rowsPerPage,
+        filters: {
+          category: selectedCategory,
+          barcode: filterBarcode,
+          name: filterName,
+          price: filterPrice,
+          purchasePrice: filterPurchasePrice,
+        },
+      });
+      setDisplayedProducts(products);
+      setTotalProducts(total);
+
       setNotification({
         open: true,
         message: "Ürün başarıyla güncellendi",
@@ -259,30 +284,28 @@ function InventoryScreen() {
       // Close the confirmation dialog
       setDeleteConfirmation({ open: false, productId: null, productName: "" });
 
-      if (stock == 0) {
-        setNotification({
-          open: true,
-          message:
-            "Ürün satış geçmişi olduğu için silinemedi. Stok değeri 0 yapıldı.",
-          severity: "success",
-        });
-        const updatedProducts = displayedProducts.map((product) =>
-          product.id === deleteConfirmation.productId
-            ? { ...product, stock: 0 }
-            : product
-        );
-        setDisplayedProducts(updatedProducts);
-      } else {
-        setNotification({
-          open: true,
-          message: "Ürün başarıyla silindi",
-          severity: "success",
-        });
-        const updatedProducts = displayedProducts.filter(
-          (product) => product.id !== deleteConfirmation.productId
-        );
-        setDisplayedProducts(updatedProducts);
-      }
+      // Refresh products list
+      const { products, total } = await getProducts({
+        page: page,
+        limit: rowsPerPage,
+        filters: {
+          category: selectedCategory,
+          barcode: filterBarcode,
+          name: filterName,
+          price: filterPrice,
+          purchasePrice: filterPurchasePrice,
+        },
+      });
+      setDisplayedProducts(products);
+      setTotalProducts(total);
+
+      setNotification({
+        open: true,
+        message: stock === 0 
+          ? "Ürün satış geçmişi olduğu için silinemedi. Stok değeri 0 yapıldı."
+          : "Ürün başarıyla silindi",
+        severity: "success",
+      });
     } catch (error) {
       console.error("Ürün silinirken hata:", error);
       setNotification({
@@ -301,42 +324,14 @@ function InventoryScreen() {
   };
 
   return (
-    <Box
-      sx={{ height: "100vh", display: "flex", flexDirection: "column", p: 2 }}
-    >
-      <Grid
-        container
-        spacing={2}
-        sx={{ flex: 1, display: "flex", flexDirection: "column" }}
-      >
+    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", p: 2 }}>
+      <Grid container spacing={2} sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Products management */}
-        <Grid
-          item
-          xs={12}
-          sx={{ flex: 1, display: "flex", flexDirection: "column" }}
-        >
-          <Paper
-            sx={{
-              p: 2,
-              display: "flex",
-              flexDirection: "column",
-              height: "100%",
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
-            >
+        <Grid item xs={12} sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <Paper sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
               <Typography variant="h6">Ürünler</Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setShowAddProduct(true)}
-              >
+              <Button variant="contained" color="primary" onClick={() => setShowAddProduct(true)}>
                 Ürün Ekle
               </Button>
             </Box>
@@ -385,7 +380,7 @@ function InventoryScreen() {
                   onChange={(e) => setFilterPurchasePrice(e.target.value)}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={2}>
                 <FormControl fullWidth size="small">
                   <InputLabel id="category-filter-label">Kategori</InputLabel>
                   <Select
@@ -411,124 +406,79 @@ function InventoryScreen() {
               <Table stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell
-                      sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-                    >
-                      Barkod
-                    </TableCell>
-                    <TableCell
-                      sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-                    >
-                      İsim
-                    </TableCell>
-                    <TableCell
-                      sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-                    >
-                      Fiyat
-                    </TableCell>
-                    <TableCell
-                      sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-                    >
-                      Stok
-                    </TableCell>
-                    <TableCell
-                      sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-                    >
-                      Alış Fiyatı
-                    </TableCell>
-                    <TableCell
-                      sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-                    >
-                      Kategori
-                    </TableCell>
-                    <TableCell
-                      sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-                    >
-                      İşlemler
-                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Barkod</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>İsim</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Fiyat</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Stok</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Alış Fiyatı</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Kategori</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>İşlemler</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        Yükleniyor...
+                      <TableCell colSpan={7} align="center">Yükleniyor...</TableCell>
+                    </TableRow>
+                  ) : displayedProducts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                        {totalProducts > 0
+                          ? "Mevcut filtrelerle eşleşen ürün bulunamadı."
+                          : "Hiç ürün yok. Bazı ürünler eklemeyi deneyin!"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    <>
-                      {displayedProducts.map((product) => (
-                        <TableRow key={product.id} hover>
-                          <TableCell>{product.barcode}</TableCell>
-                          <TableCell>{product.name}</TableCell>
-                          <TableCell>
-                            ${product.price ? product.price.toFixed(2) : "0.00"}
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              type="number"
-                              size="small"
-                              defaultValue={product.stock}
-                              onBlur={(e) => {
-                                const newStockValue = parseInt(
-                                  e.target.value,
-                                  10
-                                );
-                                if (
-                                  !isNaN(newStockValue) &&
-                                  newStockValue !== product.stock
-                                ) {
-                                  handleUpdateStock(product.id, newStockValue);
-                                } else {
-                                  e.target.value = product.stock;
-                                }
-                              }}
-                              inputProps={{ min: 0 }}
-                              sx={{ width: "80px" }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {product.purchase_price
-                              ? product.purchase_price.toFixed(2)
-                              : "0.00"}
-                          </TableCell>
-                          <TableCell>
-                            {getCategoryName(product.category_id)}
-                          </TableCell>
-                          <TableCell>
-                            <IconButton
-                              onClick={() => setEditingProduct({ ...product })}
-                              color="primary"
-                              size="small"
-                            >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton
-                              onClick={() =>
-                                setDeleteConfirmation({
-                                  open: true,
-                                  productId: product.id,
-                                  productName: product.name,
-                                })
+                    displayedProducts.map((product) => (
+                      <TableRow key={product.id} hover>
+                        <TableCell>{product.barcode}</TableCell>
+                        <TableCell>{product.name}</TableCell>
+                        <TableCell>{product.price ? product.price.toFixed(2) : "0.00"} ₺</TableCell>
+                        <TableCell>
+                          <TextField
+                            type="number"
+                            size="small"
+                            defaultValue={product.stock}
+                            onBlur={(e) => {
+                              const newStockValue = parseInt(e.target.value, 10);
+                              if (!isNaN(newStockValue) && newStockValue !== product.stock) {
+                                handleUpdateStock(product.id, newStockValue);
+                              } else {
+                                e.target.value = product.stock;
                               }
-                              color="error"
-                              size="small"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {displayedProducts.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                            {totalProducts > 0
-                              ? "Mevcut filtrelerle eşleşen ürün bulunamadı."
-                              : "Hiç ürün yok. Bazı ürünler eklemeyi deneyin!"}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
+                            }}
+                            inputProps={{ min: 0 }}
+                            sx={{ width: "80px" }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {product.purchase_price ? product.purchase_price.toFixed(2) : "0.00"} ₺
+                        </TableCell>
+                        <TableCell>{getCategoryName(product.category_id)}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            onClick={() => setEditingProduct({ ...product })}
+                            color="primary"
+                            size="small"
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            onClick={() =>
+                              setDeleteConfirmation({
+                                open: true,
+                                productId: product.id,
+                                productName: product.name,
+                              })
+                            }
+                            color="error"
+                            size="small"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
@@ -546,12 +496,7 @@ function InventoryScreen() {
         </Grid>
 
         {/* Add Product Dialog */}
-        <Dialog
-          open={showAddProduct}
-          onClose={() => setShowAddProduct(false)}
-          maxWidth="sm"
-          fullWidth
-        >
+        <Dialog open={showAddProduct} onClose={() => setShowAddProduct(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Yeni Ürün Ekle</DialogTitle>
           <DialogContent>
             <TextField
@@ -559,18 +504,14 @@ function InventoryScreen() {
               margin="dense"
               label="Barkod"
               value={newProduct.barcode}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, barcode: e.target.value })
-              }
+              onChange={(e) => setNewProduct((prev) => ({ ...prev, barcode: e.target.value }))}
             />
             <TextField
               fullWidth
               margin="dense"
               label="İsim"
               value={newProduct.name}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, name: e.target.value })
-              }
+              onChange={(e) => setNewProduct((prev) => ({ ...prev, name: e.target.value }))}
             />
             <TextField
               fullWidth
@@ -578,9 +519,7 @@ function InventoryScreen() {
               label="Fiyat"
               type="number"
               value={newProduct.price}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, price: e.target.value })
-              }
+              onChange={(e) => setNewProduct((prev) => ({ ...prev, price: e.target.value }))}
             />
             <TextField
               fullWidth
@@ -588,9 +527,7 @@ function InventoryScreen() {
               label="Başlangıç Stok"
               type="number"
               value={newProduct.stock}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, stock: e.target.value })
-              }
+              onChange={(e) => setNewProduct((prev) => ({ ...prev, stock: e.target.value }))}
             />
             <TextField
               fullWidth
@@ -598,18 +535,14 @@ function InventoryScreen() {
               label="Alış Fiyatı"
               type="number"
               value={newProduct.purchase_price || ""}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, purchase_price: e.target.value })
-              }
+              onChange={(e) => setNewProduct((prev) => ({ ...prev, purchase_price: e.target.value }))}
             />
             <FormControl fullWidth margin="dense">
               <InputLabel>Kategori</InputLabel>
               <Select
                 value={newProduct.category_id}
                 label="Kategori"
-                onChange={(e) =>
-                  setNewProduct({ ...newProduct, category_id: e.target.value })
-                }
+                onChange={(e) => setNewProduct((prev) => ({ ...prev, category_id: e.target.value }))}
               >
                 <MenuItem value="">
                   <em>Yok</em>
@@ -647,10 +580,10 @@ function InventoryScreen() {
                   label="Barkod"
                   value={editingProduct.barcode}
                   onChange={(e) =>
-                    setEditingProduct({
-                      ...editingProduct,
+                    setEditingProduct((prev) => ({
+                      ...prev,
                       barcode: e.target.value,
-                    })
+                    }))
                   }
                 />
                 <TextField
@@ -659,10 +592,10 @@ function InventoryScreen() {
                   label="İsim"
                   value={editingProduct.name}
                   onChange={(e) =>
-                    setEditingProduct({
-                      ...editingProduct,
+                    setEditingProduct((prev) => ({
+                      ...prev,
                       name: e.target.value,
-                    })
+                    }))
                   }
                 />
                 <TextField
@@ -672,10 +605,10 @@ function InventoryScreen() {
                   type="number"
                   value={editingProduct.price}
                   onChange={(e) =>
-                    setEditingProduct({
-                      ...editingProduct,
+                    setEditingProduct((prev) => ({
+                      ...prev,
                       price: e.target.value,
-                    })
+                    }))
                   }
                 />
                 <TextField
@@ -685,10 +618,10 @@ function InventoryScreen() {
                   type="number"
                   value={editingProduct.stock}
                   onChange={(e) =>
-                    setEditingProduct({
-                      ...editingProduct,
+                    setEditingProduct((prev) => ({
+                      ...prev,
                       stock: e.target.value,
-                    })
+                    }))
                   }
                 />
                 <TextField
@@ -698,10 +631,10 @@ function InventoryScreen() {
                   type="number"
                   value={editingProduct.purchase_price || ""}
                   onChange={(e) =>
-                    setEditingProduct({
-                      ...editingProduct,
+                    setEditingProduct((prev) => ({
+                      ...prev,
                       purchase_price: e.target.value,
-                    })
+                    }))
                   }
                 />
                 <FormControl fullWidth margin="dense">
@@ -710,10 +643,10 @@ function InventoryScreen() {
                     value={editingProduct.category_id || ""}
                     label="Kategori"
                     onChange={(e) =>
-                      setEditingProduct({
-                        ...editingProduct,
+                      setEditingProduct((prev) => ({
+                        ...prev,
                         category_id: e.target.value,
-                      })
+                      }))
                     }
                   >
                     <MenuItem value="">
@@ -737,7 +670,7 @@ function InventoryScreen() {
           )}
         </Dialog>
 
-        {/* Add Delete Confirmation Dialog */}
+        {/* Delete Confirmation Dialog */}
         <Dialog
           open={deleteConfirmation.open}
           onClose={() =>
@@ -777,11 +710,11 @@ function InventoryScreen() {
         <Snackbar
           open={notification.open}
           autoHideDuration={4000}
-          onClose={() => setNotification({ ...notification, open: false })}
+          onClose={() => setNotification((prev) => ({ ...prev, open: false }))}
         >
           <Alert
             severity={notification.severity}
-            onClose={() => setNotification({ ...notification, open: false })}
+            onClose={() => setNotification((prev) => ({ ...prev, open: false }))}
           >
             {notification.message}
           </Alert>
