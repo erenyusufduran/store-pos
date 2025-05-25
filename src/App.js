@@ -54,7 +54,11 @@ function App() {
             <Container maxWidth="xl" sx={{ mt: 2, height: 'calc(100vh - 64px)', overflow: 'auto' }}>
               <Routes>
                 <Route path="/" element={<POSScreen />} />
-                <Route path="/inventory" element={<InventoryScreen />} />
+                <Route path="/inventory" element={
+                  <ProtectedRoute>
+                    <InventoryScreen />
+                  </ProtectedRoute>
+                } />
                 <Route path="/reports" element={
                   <ProtectedRoute>
                     <ReportScreen />

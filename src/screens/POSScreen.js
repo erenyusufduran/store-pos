@@ -33,6 +33,9 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import { useProducts } from "../contexts/ProductContext.js";
 import { useSales } from "../contexts/SalesContext.js";
+import { FixedSizeGrid as GridVirtualized } from 'react-window';
+import { FixedSizeList as ListVirtualized } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 
 // Main BarcodeScanner component
 const BarcodeScanner = React.memo(({ onProductScanned }) => {
@@ -523,61 +526,75 @@ function POSScreen() {
                   </Typography>
                 </Box>
               ) : (
-                <List sx={{ flexGrow: 1, overflow: "auto" }}>
-                  {currentSale.map((item) => (
-                    <React.Fragment key={item.id}>
-                      <ListItem
-                        secondaryAction={
-                          <Box>
-                            <IconButton
-                              edge="end"
-                              onClick={() =>
-                                updateItemQuantity(item.id, item.quantity - 1)
-                              }
-                            >
-                              <RemoveIcon />
-                            </IconButton>
-                            <IconButton
-                              edge="end"
-                              onClick={() =>
-                                updateItemQuantity(item.id, item.quantity + 1)
-                              }
-                            >
-                              <AddIcon />
-                            </IconButton>
-                            <IconButton
-                              edge="end"
-                              onClick={() => removeItemFromSale(item.id)}
-                            >
-                              <CancelIcon />
-                            </IconButton>
-                          </Box>
-                        }
+                <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
+                  <AutoSizer>
+                    {({ height, width }) => (
+                      <ListVirtualized
+                        height={height}
+                        itemCount={currentSale.length}
+                        itemSize={72} // Adjust based on your needs
+                        width={width}
                       >
-                        <ListItemText
-                          primary={item.name}
-                          secondary={
-                            <>
-                              <Typography variant="body2" component="span">
-                                {item.price} ₺ × {item.quantity} ={" "}
-                                {(item.price * item.quantity).toFixed(2)} ₺
-                              </Typography>
-                              <br />
-                              <Typography
-                                variant="caption"
-                                component="span"
-                                color="textSecondary"
+                        {({ index, style }) => {
+                          const item = currentSale[index];
+                          return (
+                            <div style={style}>
+                              <ListItem
+                                secondaryAction={
+                                  <Box>
+                                    <IconButton
+                                      edge="end"
+                                      onClick={() =>
+                                        updateItemQuantity(item.id, item.quantity - 1)
+                                      }
+                                    >
+                                      <RemoveIcon />
+                                    </IconButton>
+                                    <IconButton
+                                      edge="end"
+                                      onClick={() =>
+                                        updateItemQuantity(item.id, item.quantity + 1)
+                                      }
+                                    >
+                                      <AddIcon />
+                                    </IconButton>
+                                    <IconButton
+                                      edge="end"
+                                      onClick={() => removeItemFromSale(item.id)}
+                                    >
+                                      <CancelIcon />
+                                    </IconButton>
+                                  </Box>
+                                }
                               >
-                                Barkod: {item.barcode}
-                              </Typography>
-                            </>
-                          }
-                        />
-                      </ListItem>
-                      <Divider />
-                    </React.Fragment>
-                  ))}
-                </List>
+                                <ListItemText
+                                  primary={item.name}
+                                  secondary={
+                                    <>
+                                      <Typography variant="body2" component="span">
+                                        {item.price} ₺ × {item.quantity} ={" "}
+                                        {(item.price * item.quantity).toFixed(2)} ₺
+                                      </Typography>
+                                      <br />
+                                      <Typography
+                                        variant="caption"
+                                        component="span"
+                                        color="textSecondary"
+                                      >
+                                        Barkod: {item.barcode}
+                                      </Typography>
+                                    </>
+                                  }
+                                />
+                              </ListItem>
+                              <Divider />
+                            </div>
+                          );
+                        }}
+                      </ListVirtualized>
+                    )}
+                  </AutoSizer>
+                </Box>
               )}
 
               {currentSale.length > 0 && (
@@ -656,13 +673,23 @@ function POSScreen() {
             sx={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
             {/* Categories at the top */}
-            <Paper sx={{ p: 2, mb: 2, width: "800px", height: "120px" }}>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                mb: 2, 
+                width: "100%", 
+                height: "120px",
+                display: "flex",
+                flexDirection: "column"
+              }}
+            >
               <Box
                 sx={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
                   mb: 1,
+                  flexShrink: 0
                 }}
               >
                 <Typography variant="h6">Kategoriler</Typography>
@@ -677,64 +704,71 @@ function POSScreen() {
               </Box>
               <Box
                 sx={{
-                  width: "100%",
+                  flexGrow: 1,
                   overflowX: "auto",
                   overflowY: "hidden",
-                  display: "flex",
-                  pb: 1,
                   "&::-webkit-scrollbar": {
                     height: "8px",
+                  },
+                  "&::-webkit-scrollbar-track": {
+                    backgroundColor: "rgba(0,0,0,0.05)",
+                    borderRadius: "4px",
                   },
                   "&::-webkit-scrollbar-thumb": {
                     backgroundColor: "rgba(0,0,0,0.2)",
                     borderRadius: "4px",
+                    "&:hover": {
+                      backgroundColor: "rgba(0,0,0,0.3)",
+                    },
                   },
                 }}
               >
-                <Stack
-                  direction="row"
-                  spacing={1}
+                <Box
                   sx={{
-                    flexWrap: "nowrap",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 1,
+                    px: 1,
+                    py: 0.5,
                     minWidth: "min-content",
                   }}
                 >
                   <Chip
                     label={"Tümü"}
                     color={selectedCategory === null ? "primary" : "default"}
-                    onClick={() =>
-                      setSelectedCategory(
-                        selectedCategory === null ? null : null
-                      )
-                    }
-                    sx={{ flexShrink: 0 }}
+                    onClick={() => setSelectedCategory(null)}
+                    sx={{ 
+                      height: "32px",
+                      width: "100%"
+                    }}
                   />
                   {categories.map((category) => (
                     <Chip
                       key={category.id}
                       label={category.name}
-                      color={
-                        selectedCategory === category.id ? "primary" : "default"
-                      }
-                      onClick={() =>
-                        setSelectedCategory(
-                          selectedCategory === category.id ? null : category.id
-                        )
-                      }
-                      sx={{ flexShrink: 0 }}
+                      color={selectedCategory === category.id ? "primary" : "default"}
+                      onClick={() => setSelectedCategory(
+                        selectedCategory === category.id ? null : category.id
+                      )}
+                      sx={{ 
+                        height: "32px",
+                        width: "100%"
+                      }}
                     />
                   ))}
-
                   {categories.length === 0 && (
                     <Typography
                       variant="body2"
                       align="center"
-                      sx={{ width: "100%" }}
+                      sx={{ 
+                        gridColumn: "1 / -1",
+                        py: 1
+                      }}
                     >
                       Henüz kategori yok. + düğmesini kullanarak ekleyin.
                     </Typography>
                   )}
-                </Stack>
+                </Box>
               </Box>
             </Paper>
 
@@ -758,58 +792,80 @@ function POSScreen() {
                   : "Popüler Ürünler"}
               </Typography>
 
-              <Box sx={{ flexGrow: 1, overflow: "auto" }}>
-                <Grid container spacing={1}>
-                  {displayedProducts.map(
-                    (product) => (
-                      <Grid item xs={4} sm={3} key={product.id}>
-                        <Button
-                          variant="outlined"
-                          fullWidth
-                          sx={{
-                            height: "100%",
-                            justifyContent: "flex-start",
-                            textAlign: "left",
-                            textTransform: "none",
-                            p: 1,
-                          }}
-                          onClick={() => {
-                            const backstagePrice =
-                              product.price * backstagePriceMultiplier;
-                            addItemToSale({
-                              ...product,
-                              price: isBackstage ? backstagePrice : product.price,
-                            });
-                          }}
-                        >
-                          <Box>
-                            <Typography variant="body2" noWrap>
-                              {product.name}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">
-                              {isBackstage
-                                ? `${(
-                                    product.price *
-                                    (1 + settings.backstageMarginPercent / 100)
-                                  ).toFixed(2)} ₺`
-                                : `${product.price} ₺`}
-                            </Typography>
-                          </Box>
-                        </Button>
-                      </Grid>
-                    )
-                  )}
+              <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
+                {displayedProducts.length === 0 ? (
+                  <Typography variant="body1" align="center" sx={{ p: 4 }}>
+                    {selectedCategory
+                      ? "Bu kategoride ürün bulunamadı."
+                      : "Henüz popüler ürün yok. Satış yapmaya başlayın!"}
+                  </Typography>
+                ) : (
+                  <AutoSizer>
+                    {({ height, width }) => {
+                      const columnCount = Math.floor(width / 200); // Adjust based on your needs
+                      const rowCount = Math.ceil(displayedProducts.length / columnCount);
+                      const columnWidth = width / columnCount;
+                      const rowHeight = 80; // Adjust based on your needs
 
-                  {displayedProducts.length === 0 && (
-                    <Grid item xs={12}>
-                      <Typography variant="body1" align="center" sx={{ p: 4 }}>
-                        {selectedCategory
-                          ? "Bu kategoride ürün bulunamadı."
-                          : "Henüz popüler ürün yok. Satış yapmaya başlayın!"}
-                      </Typography>
-                    </Grid>
-                  )}
-                </Grid>
+                      return (
+                        <GridVirtualized
+                          columnCount={columnCount}
+                          columnWidth={columnWidth}
+                          height={height}
+                          rowCount={rowCount}
+                          rowHeight={rowHeight}
+                          width={width}
+                        >
+                          {({ columnIndex, rowIndex, style }) => {
+                            const index = rowIndex * columnCount + columnIndex;
+                            const product = displayedProducts[index];
+                            
+                            if (!product) return null;
+
+                            return (
+                              <div style={style}>
+                                <Button
+                                  variant="outlined"
+                                  fullWidth
+                                  sx={{
+                                    height: "100%",
+                                    justifyContent: "flex-start",
+                                    textAlign: "left",
+                                    textTransform: "none",
+                                    p: 1,
+                                    m: 0.5,
+                                  }}
+                                  onClick={() => {
+                                    const backstagePrice =
+                                      product.price * backstagePriceMultiplier;
+                                    addItemToSale({
+                                      ...product,
+                                      price: isBackstage ? backstagePrice : product.price,
+                                    });
+                                  }}
+                                >
+                                  <Box>
+                                    <Typography variant="body2" noWrap>
+                                      {product.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="textSecondary">
+                                      {isBackstage
+                                        ? `${(
+                                            product.price *
+                                            (1 + settings.backstageMarginPercent / 100)
+                                          ).toFixed(2)} ₺`
+                                        : `${product.price} ₺`}
+                                    </Typography>
+                                  </Box>
+                                </Button>
+                              </div>
+                            );
+                          }}
+                        </GridVirtualized>
+                      );
+                    }}
+                  </AutoSizer>
+                )}
               </Box>
             </Paper>
           </Box>
