@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Box,
   Grid,
@@ -33,9 +39,286 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import { useProducts } from "../contexts/ProductContext.js";
 import { useSales } from "../contexts/SalesContext.js";
-import { FixedSizeGrid as GridVirtualized } from 'react-window';
-import { FixedSizeList as ListVirtualized } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
+import { FixedSizeGrid as GridVirtualized } from "react-window";
+import { FixedSizeList as ListVirtualized } from "react-window";
+import AutoSizer from "react-virtualized-auto-sizer";
+
+// Product Filter Modal Component
+const ProductFilterModal = React.memo(
+  ({
+    open,
+    onClose,
+    products,
+    searchTerm,
+    onAddToSale,
+    isBackstage,
+    backstagePriceMultiplier,
+  }) => {
+    const filteredProducts = products
+      ? products.filter((product) =>
+          product.name.toUpperCase().includes(searchTerm.toUpperCase())
+        )
+      : [];
+
+    return (
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            height: "80vh",
+            maxHeight: "80vh",
+          },
+        }}
+      >
+        <DialogTitle>"{searchTerm}" için Ürünler</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ height: "100%", overflow: "hidden" }}>
+            {filteredProducts.length === 0 ? (
+              <Typography variant="body1" align="center" sx={{ p: 4 }}>
+                "{searchTerm}" için ürün bulunamadı
+              </Typography>
+            ) : (
+              <AutoSizer>
+                {({ height, width }) => (
+                  <ListVirtualized
+                    height={height}
+                    itemCount={filteredProducts.length}
+                    itemSize={72}
+                    width={width}
+                  >
+                    {({ index, style }) => {
+                      const product = filteredProducts[index];
+                      return (
+                        <div style={style}>
+                          <ListItem
+                            button
+                            onClick={() => {
+                              const backstagePrice =
+                                product.price * backstagePriceMultiplier;
+                              onAddToSale({
+                                ...product,
+                                price: isBackstage
+                                  ? backstagePrice
+                                  : product.price,
+                              });
+                              onClose();
+                            }}
+                          >
+                            <ListItemText
+                              primary={product.name}
+                              secondary={
+                                <>
+                                  <Typography variant="body2" component="span">
+                                    {isBackstage
+                                      ? `${(
+                                          product.price *
+                                          (1 + backstagePriceMultiplier - 1)
+                                        ).toFixed(2)} ₺`
+                                      : `${product.price} ₺`}
+                                  </Typography>
+                                  <br />
+                                  <Typography
+                                    variant="caption"
+                                    component="span"
+                                    color="textSecondary"
+                                  >
+                                    Barkod: {product.barcode}
+                                  </Typography>
+                                </>
+                              }
+                            />
+                          </ListItem>
+                          <Divider />
+                        </div>
+                      );
+                    }}
+                  </ListVirtualized>
+                )}
+              </AutoSizer>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="primary">
+            Kapat
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
+);
+
+// Image Gallery Component
+const ImageGallery = React.memo(({ onImageClick, images }) => {
+  const [imageUrls, setImageUrls] = useState({});
+
+  // Remove duplicate images by using a Set
+  const uniqueImages = useMemo(() => {
+    const seen = new Set();
+    return images.filter(image => {
+      const duplicate = seen.has(image.title);
+      seen.add(image.title);
+      return !duplicate;
+    });
+  }, [images]);
+
+  // Function to fetch product image from web
+  const fetchProductImage = async (title) => {
+    try {
+      // Create search terms for better results
+      const searchTerms = [
+        `${title} product`,
+        `${title} bottle`,
+        `${title} drink`,
+        `${title} alcohol`,
+        `${title} beverage`
+      ];
+
+      // Try each search term until we find an image
+      for (const term of searchTerms) {
+        try {
+          // Use a proxy service to avoid CORS issues
+          const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.google.com/search?q=${term}&tbm=isch`)}`);
+          
+          if (response.ok) {
+            const html = await response.text();
+            // Extract image URL from the response
+            const imgMatch = html.match(/https:\/\/[^"]+\.(?:jpg|jpeg|png|gif)/i);
+            console.log(imgMatch)
+            if (imgMatch) {
+              return imgMatch[0];
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching image for term ${term}:`, error);
+          continue;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error in fetchProductImage:', error);
+      return null;
+    }
+  };
+
+  // Load images when component mounts or images change
+  useEffect(() => {
+    const loadImages = async () => {
+      const newImageUrls = {};
+      
+      for (const image of uniqueImages) {
+        try {
+          const productImage = await fetchProductImage(image.title);
+          if (productImage) {
+            // Verify the image URL is accessible
+            const imgResponse = await fetch(productImage, { method: 'HEAD' });
+            if (imgResponse.ok) {
+              newImageUrls[image.title] = productImage;
+            } else {
+              newImageUrls[image.title] = image.url;
+            }
+          } else {
+            newImageUrls[image.title] = image.url;
+          }
+        } catch (error) {
+          console.error(`Error loading image for ${image.title}:`, error);
+          newImageUrls[image.title] = image.url;
+        }
+      }
+      
+      setImageUrls(newImageUrls);
+    };
+
+    loadImages();
+  }, [uniqueImages]);
+
+  return (
+    <Paper sx={{ p: 2, mb: 2, height: "100%" }}>
+      <Typography variant="h6" gutterBottom>
+        Hızlı Ürünler
+      </Typography>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: 2,
+          height: "calc(100% - 40px)",
+          overflowY: "auto",
+          "&::-webkit-scrollbar": {
+            width: "8px",
+          },
+          "&::-webkit-scrollbar-track": {
+            backgroundColor: "rgba(0,0,0,0.05)",
+            borderRadius: "4px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: "rgba(0,0,0,0.2)",
+            borderRadius: "4px",
+            "&:hover": {
+              backgroundColor: "rgba(0,0,0,0.3)",
+            },
+          },
+        }}
+      >
+        {uniqueImages.map((image) => (
+          <Box
+            key={`${image.id}-${image.title}`}
+            onClick={() => onImageClick(image.title)}
+            sx={{
+              position: "relative",
+              paddingTop: "120%",
+              cursor: "pointer",
+              "&:hover": {
+                transform: "scale(1.05)",
+                transition: "transform 0.2s ease-in-out",
+                boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+              },
+            }}
+          >
+            <img
+              src={imageUrls[image.title] || image.url}
+              alt={image.title}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                borderRadius: "12px",
+              }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = image.url;
+              }}
+            />
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: "rgba(0,0,0,0.7)",
+                color: "white",
+                padding: "12px",
+                borderRadius: "0 0 12px 12px",
+                textAlign: "center",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {image.title}
+              </Typography>
+            </Box>
+          </Box>
+        ))}
+      </Box>
+    </Paper>
+  );
+});
 
 // Main BarcodeScanner component
 const BarcodeScanner = React.memo(({ onProductScanned }) => {
@@ -90,127 +373,129 @@ const BarcodeScanner = React.memo(({ onProductScanned }) => {
 });
 
 // New Product Dialog
-const NewProductDialog = React.memo(({
-  open,
-  onClose,
-  onAddProduct,
-  initialBarcode,
-  categories: availableCategories,
-}) => {
-  const [product, setProduct] = useState({
-    barcode: "",
-    name: "",
-    price: "",
-    stock: 1,
-    category_id: "",
-  });
+const NewProductDialog = React.memo(
+  ({
+    open,
+    onClose,
+    onAddProduct,
+    initialBarcode,
+    categories: availableCategories,
+  }) => {
+    const [product, setProduct] = useState({
+      barcode: "",
+      name: "",
+      price: "",
+      stock: 1,
+      category_id: "",
+    });
 
-  useEffect(() => {
-    if (open) {
-      setProduct({
-        barcode: initialBarcode || "",
-        name: "",
-        price: "",
-        stock: 1,
-        category_id: "",
-      });
-    }
-  }, [open, initialBarcode]);
+    useEffect(() => {
+      if (open) {
+        setProduct({
+          barcode: initialBarcode || "",
+          name: "",
+          price: "",
+          stock: 1,
+          category_id: "",
+        });
+      }
+    }, [open, initialBarcode]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProduct((prev) => ({ ...prev, [name]: value }));
-  };
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setProduct((prev) => ({ ...prev, [name]: value }));
+    };
 
-  const handleSubmit = async () => {
-    try {
-      await onAddProduct({
-        ...product,
-        price: parseFloat(product.price) || 0,
-        stock: parseInt(product.stock) || 0,
-        category_id: product.category_id || null,
-      });
-      onClose();
-    } catch (error) {
-      console.error("Ürün eklenirken hata:", error);
-    }
-  };
+    const handleSubmit = async () => {
+      try {
+        await onAddProduct({
+          ...product,
+          price: parseFloat(product.price) || 0,
+          stock: parseInt(product.stock) || 0,
+          category_id: product.category_id || null,
+        });
+        onClose();
+      } catch (error) {
+        console.error("Ürün eklenirken hata:", error);
+      }
+    };
 
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Yeni Ürün Ekle</DialogTitle>
-      <DialogContent>
-        <TextField
-          margin="dense"
-          label="Barkod"
-          type="text"
-          fullWidth
-          name="barcode"
-          value={product.barcode}
-          onChange={handleChange}
-          disabled={Boolean(initialBarcode)}
-        />
-        <TextField
-          margin="dense"
-          label="Ürün Adı"
-          type="text"
-          fullWidth
-          name="name"
-          value={product.name}
-          onChange={handleChange}
-          autoFocus
-        />
-        <TextField
-          margin="dense"
-          label="Fiyat"
-          type="number"
-          fullWidth
-          name="price"
-          value={product.price}
-          onChange={handleChange}
-        />
-        <TextField
-          margin="dense"
-          label="Başlangıç Stok"
-          type="number"
-          fullWidth
-          name="stock"
-          value={product.stock}
-          onChange={handleChange}
-        />
-        <FormControl fullWidth margin="dense">
-          <InputLabel id="category-select-label">Kategori</InputLabel>
-          <Select
-            labelId="category-select-label"
-            id="category-select"
-            name="category_id"
-            value={product.category_id}
-            label="Kategori"
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Yeni Ürün Ekle</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Barkod"
+            type="text"
+            fullWidth
+            name="barcode"
+            value={product.barcode}
             onChange={handleChange}
-          >
-            <MenuItem value="">
-              <em>Hiçbiri</em>
-            </MenuItem>
-            {availableCategories &&
-              availableCategories.map((category) => (
-                <MenuItem key={category.id} value={category.id}>
-                  {category.name}
-                </MenuItem>
-              ))}
-          </Select>
-        </FormControl>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="primary">
-          İptal
-        </Button>
-        <Button onClick={handleSubmit} color="primary">
-          Ürün Ekle
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-});
+            disabled={Boolean(initialBarcode)}
+          />
+          <TextField
+            margin="dense"
+            label="Ürün Adı"
+            type="text"
+            fullWidth
+            name="name"
+            value={product.name}
+            onChange={handleChange}
+            autoFocus
+          />
+          <TextField
+            margin="dense"
+            label="Fiyat"
+            type="number"
+            fullWidth
+            name="price"
+            value={product.price}
+            onChange={handleChange}
+          />
+          <TextField
+            margin="dense"
+            label="Başlangıç Stok"
+            type="number"
+            fullWidth
+            name="stock"
+            value={product.stock}
+            onChange={handleChange}
+          />
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="category-select-label">Kategori</InputLabel>
+            <Select
+              labelId="category-select-label"
+              id="category-select"
+              name="category_id"
+              value={product.category_id}
+              label="Kategori"
+              onChange={handleChange}
+            >
+              <MenuItem value="">
+                <em>Hiçbiri</em>
+              </MenuItem>
+              {availableCategories &&
+                availableCategories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="primary">
+            İptal
+          </Button>
+          <Button onClick={handleSubmit} color="primary">
+            Ürün Ekle
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
+);
 
 // New CategoryDialog component
 const CategoryDialog = React.memo(({ open, onClose, onAddCategory }) => {
@@ -273,6 +558,7 @@ function POSScreen() {
     addProduct,
     refreshPopularProducts,
     addCategory,
+    getProducts,
   } = useProducts();
   const {
     currentSale,
@@ -283,6 +569,7 @@ function POSScreen() {
     completeSale,
     getTotalAmount,
   } = useSales();
+  const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryProducts, setCategoryProducts] = useState([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -303,102 +590,180 @@ function POSScreen() {
     backstageMarginPercent: 0,
   });
   const [isBackstage, setIsBackstage] = useState(false);
+  const [filterModal, setFilterModal] = useState({
+    open: false,
+    searchTerm: "",
+  });
+  const [images, setImages] = useState([
+    // Alcoholic Beverages
+    { id: 1, url: "https://picsum.photos/200/200?random=1", title: "Red Label" },
+    { id: 2, url: "https://picsum.photos/200/200?random=2", title: "CHIVAS" },
+    { id: 3, url: "https://picsum.photos/200/200?random=3", title: "Jack Daniels" },
+    { id: 4, url: "https://picsum.photos/200/200?random=4", title: "Bourbon" },
+    // Beers
+    { id: 5, url: "https://picsum.photos/200/200?random=5", title: "Efes" },
+    { id: 6, url: "https://picsum.photos/200/200?random=6", title: "Tuborg" },
+    { id: 7, url: "https://picsum.photos/200/200?random=7", title: "Miller" },
+    { id: 8, url: "https://picsum.photos/200/200?random=8", title: "Corona" },
+    // Spirits
+    { id: 9, url: "https://picsum.photos/200/200?random=9", title: "Votka" },
+    { id: 10, url: "https://picsum.photos/200/200?random=10", title: "Tekila" },
+    { id: 11, url: "https://picsum.photos/200/200?random=11", title: "Rom" },
+    { id: 12, url: "https://picsum.photos/200/200?random=12", title: "Gin" },
+    // Wine & Others
+    { id: 13, url: "https://picsum.photos/200/200?random=13", title: "Şarap" },
+    { id: 14, url: "https://picsum.photos/200/200?random=14", title: "Rakı" },
+    { id: 15, url: "https://picsum.photos/200/200?random=15", title: "Konyak" },
+  ]);
+  const barcodeInputRef = useRef(null);
 
-  // Load settings on component mount
+  // Load settings and initial products
   useEffect(() => {
-    const loadSettings = async () => {
+    const loadInitialData = async () => {
       try {
         const savedSettings = await window.api.getSettings();
         setSettings(savedSettings || { backstageMarginPercent: 0 });
+
+        // Load initial products
+        const { products: initialProducts } = await getProducts({
+          page: 1,
+          limit: 50,
+          filters: { name: images.map((image) => image.title) },
+        });
+        setProducts(initialProducts || []);
       } catch (error) {
-        console.error("Ayarları yüklerken hata:", error);
+        console.error("Error loading initial data:", error);
       }
     };
-    loadSettings();
-  }, []);
+
+    loadInitialData();
+  }, []); // Empty dependency array since we only want to load once on mount
+
+  // Update products when filter modal opens
+  useEffect(() => {
+    const loadFilteredProducts = async () => {
+      if (filterModal.open) {
+        try {
+          const { products: filteredProducts } = await getProducts({
+            page: 1,
+            limit: 50,
+            filters: { name: filterModal.searchTerm },
+          });
+          setProducts(filteredProducts || []);
+        } catch (error) {
+          console.error("Error loading filtered products:", error);
+        }
+      }
+    };
+
+    loadFilteredProducts();
+  }, [filterModal.open, filterModal.searchTerm, getProducts]);
 
   // Memoize expensive calculations
-  const backstagePriceMultiplier = useMemo(() => 
-    1 + settings.backstageMarginPercent / 100, 
+  const backstagePriceMultiplier = useMemo(
+    () => 1 + settings.backstageMarginPercent / 100,
     [settings.backstageMarginPercent]
   );
 
   // Memoize handlers
-  const handleProductScanned = useCallback(async (barcode) => {
-    const product = await getProductByBarcode(barcode);
+  const handleProductScanned = useCallback(
+    async (barcode) => {
+      const product = await getProductByBarcode(barcode);
 
-    if (product) {
-      const backstagePrice = product.price * backstagePriceMultiplier;
-      addItemToSale({
-        ...product,
-        price: isBackstage ? backstagePrice : product.price,
-      });
-    } else {
-      setNewProductBarcode(barcode);
-      setShowAddDialog(true);
-    }
-  }, [getProductByBarcode, addItemToSale, isBackstage, backstagePriceMultiplier]);
+      if (product) {
+        const backstagePrice = product.price * backstagePriceMultiplier;
+        addItemToSale({
+          ...product,
+          price: isBackstage ? backstagePrice : product.price,
+        });
+      } else {
+        setNewProductBarcode(barcode);
+        setShowAddDialog(true);
+      }
+    },
+    [getProductByBarcode, addItemToSale, isBackstage, backstagePriceMultiplier]
+  );
 
-  const handleAddProduct = useCallback(async (productData) => {
-    try {
-      const newProduct = await addProduct(productData);
-      setShowAddDialog(false);
-      setNewProductBarcode("");
-      const backstagePrice = newProduct.price * backstagePriceMultiplier;
-      addItemToSale({
-        ...newProduct,
-        price: isBackstage ? backstagePrice : newProduct.price,
-      });
-      await refreshPopularProducts();
-      setNotification({
-        open: true,
-        message: "Ürün başarıyla eklendi",
-        severity: "success",
-      });
-    } catch (error) {
-      setNotification({
-        open: true,
-        message: "Ürün eklenemedi",
-        severity: "error",
-      });
-    }
-  }, [addProduct, addItemToSale, isBackstage, backstagePriceMultiplier, refreshPopularProducts]);
-
-  const handleCompleteSale = useCallback(async (paymentType) => {
-    if (currentSale.length === 0) {
-      setNotification({
-        open: true,
-        message: "Satışta hiç ürün yok",
-        severity: "warning",
-      });
-      return;
-    }
-
-    const success = await completeSale(
-      paymentType,
+  const handleAddProduct = useCallback(
+    async (productData) => {
+      try {
+        const newProduct = await addProduct(productData);
+        setShowAddDialog(false);
+        setNewProductBarcode("");
+        const backstagePrice = newProduct.price * backstagePriceMultiplier;
+        addItemToSale({
+          ...newProduct,
+          price: isBackstage ? backstagePrice : newProduct.price,
+        });
+        await refreshPopularProducts();
+        setNotification({
+          open: true,
+          message: "Ürün başarıyla eklendi",
+          severity: "success",
+        });
+      } catch (error) {
+        setNotification({
+          open: true,
+          message: "Ürün eklenemedi",
+          severity: "error",
+        });
+      }
+    },
+    [
+      addProduct,
+      addItemToSale,
       isBackstage,
-      settings.backstageMarginPercent
-    );
+      backstagePriceMultiplier,
+      refreshPopularProducts,
+    ]
+  );
 
-    if (success) {
-      setNotification({
-        open: true,
-        message: `Satış ${paymentType === "cash" ? "nakit" : "kart"} ile tamamlandı`,
-        severity: "success",
-      });
-      await refreshPopularProducts();
-    } else {
-      setNotification({
-        open: true,
-        message: "Satış tamamlanamadı",
-        severity: "error",
-      });
-    }
-  }, [currentSale.length, completeSale, isBackstage, settings.backstageMarginPercent, refreshPopularProducts]);
+  const handleCompleteSale = useCallback(
+    async (paymentType) => {
+      if (currentSale.length === 0) {
+        setNotification({
+          open: true,
+          message: "Satışta hiç ürün yok",
+          severity: "warning",
+        });
+        return;
+      }
+
+      const success = await completeSale(
+        paymentType,
+        isBackstage,
+        settings.backstageMarginPercent
+      );
+
+      if (success) {
+        setNotification({
+          open: true,
+          message: `Satış ${
+            paymentType === "cash" ? "nakit" : "kart"
+          } ile tamamlandı`,
+          severity: "success",
+        });
+        await refreshPopularProducts();
+      } else {
+        setNotification({
+          open: true,
+          message: "Satış tamamlanamadı",
+          severity: "error",
+        });
+      }
+    },
+    [
+      currentSale.length,
+      completeSale,
+      isBackstage,
+      settings.backstageMarginPercent,
+      refreshPopularProducts,
+    ]
+  );
 
   // Memoize filtered products
-  const displayedProducts = useMemo(() => 
-    selectedCategory ? categoryProducts : popularProducts,
+  const displayedProducts = useMemo(
+    () => (selectedCategory ? categoryProducts : popularProducts),
     [selectedCategory, categoryProducts, popularProducts]
   );
 
@@ -455,6 +820,22 @@ function POSScreen() {
     }));
   };
 
+  // Add focus effect
+  useEffect(() => {
+    const focusInput = () => {
+      if (barcodeInputRef.current) {
+        barcodeInputRef.current.focus();
+      }
+    };
+
+    focusInput();
+    window.addEventListener('click', focusInput);
+
+    return () => {
+      window.removeEventListener('click', focusInput);
+    };
+  }, []);
+
   return (
     <Box
       sx={{
@@ -470,7 +851,7 @@ function POSScreen() {
         sx={{ flexGrow: 1, height: "calc(100vh - 16px)" }}
       >
         {/* Left panel: POS functionality */}
-        <Grid item xs={6} sx={{ height: "100%", p: 2 }}>
+        <Grid item xs={4} sx={{ height: "100%", pt: 2 }}>
           <Box
             sx={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
@@ -494,6 +875,7 @@ function POSScreen() {
                   label="Barkod"
                   variant="outlined"
                   autoFocus
+                  inputRef={barcodeInputRef}
                 />
               </form>
             </Paper>
@@ -545,7 +927,10 @@ function POSScreen() {
                                     <IconButton
                                       edge="end"
                                       onClick={() =>
-                                        updateItemQuantity(item.id, item.quantity - 1)
+                                        updateItemQuantity(
+                                          item.id,
+                                          item.quantity - 1
+                                        )
                                       }
                                     >
                                       <RemoveIcon />
@@ -553,14 +938,19 @@ function POSScreen() {
                                     <IconButton
                                       edge="end"
                                       onClick={() =>
-                                        updateItemQuantity(item.id, item.quantity + 1)
+                                        updateItemQuantity(
+                                          item.id,
+                                          item.quantity + 1
+                                        )
                                       }
                                     >
                                       <AddIcon />
                                     </IconButton>
                                     <IconButton
                                       edge="end"
-                                      onClick={() => removeItemFromSale(item.id)}
+                                      onClick={() =>
+                                        removeItemFromSale(item.id)
+                                      }
                                     >
                                       <CancelIcon />
                                     </IconButton>
@@ -571,9 +961,15 @@ function POSScreen() {
                                   primary={item.name}
                                   secondary={
                                     <>
-                                      <Typography variant="body2" component="span">
+                                      <Typography
+                                        variant="body2"
+                                        component="span"
+                                      >
                                         {item.price} ₺ × {item.quantity} ={" "}
-                                        {(item.price * item.quantity).toFixed(2)} ₺
+                                        {(item.price * item.quantity).toFixed(
+                                          2
+                                        )}{" "}
+                                        ₺
                                       </Typography>
                                       <br />
                                       <Typography
@@ -667,20 +1063,20 @@ function POSScreen() {
           </Box>
         </Grid>
 
-        {/* Right panel: Categories and products */}
-        <Grid item xs={6} sx={{ height: "100%", p: 2 }}>
+        {/* Middle panel: Categories and products */}
+        <Grid item xs={4} sx={{ height: "100%", pt: 2 }}>
           <Box
             sx={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
             {/* Categories at the top */}
-            <Paper 
-              sx={{ 
-                p: 2, 
-                mb: 2, 
-                width: "100%", 
+            <Paper
+              sx={{
+                p: 2,
+                mb: 2,
+                width: "100%",
                 height: "120px",
                 display: "flex",
-                flexDirection: "column"
+                flexDirection: "column",
               }}
             >
               <Box
@@ -689,7 +1085,7 @@ function POSScreen() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   mb: 1,
-                  flexShrink: 0
+                  flexShrink: 0,
                 }}
               >
                 <Typography variant="h6">Kategoriler</Typography>
@@ -737,22 +1133,26 @@ function POSScreen() {
                     label={"Tümü"}
                     color={selectedCategory === null ? "primary" : "default"}
                     onClick={() => setSelectedCategory(null)}
-                    sx={{ 
+                    sx={{
                       height: "32px",
-                      width: "100%"
+                      width: "100%",
                     }}
                   />
                   {categories.map((category) => (
                     <Chip
                       key={category.id}
                       label={category.name}
-                      color={selectedCategory === category.id ? "primary" : "default"}
-                      onClick={() => setSelectedCategory(
-                        selectedCategory === category.id ? null : category.id
-                      )}
-                      sx={{ 
+                      color={
+                        selectedCategory === category.id ? "primary" : "default"
+                      }
+                      onClick={() =>
+                        setSelectedCategory(
+                          selectedCategory === category.id ? null : category.id
+                        )
+                      }
+                      sx={{
                         height: "32px",
-                        width: "100%"
+                        width: "100%",
                       }}
                     />
                   ))}
@@ -760,9 +1160,9 @@ function POSScreen() {
                     <Typography
                       variant="body2"
                       align="center"
-                      sx={{ 
+                      sx={{
                         gridColumn: "1 / -1",
-                        py: 1
+                        py: 1,
                       }}
                     >
                       Henüz kategori yok. + düğmesini kullanarak ekleyin.
@@ -803,7 +1203,9 @@ function POSScreen() {
                   <AutoSizer>
                     {({ height, width }) => {
                       const columnCount = Math.floor(width / 200); // Adjust based on your needs
-                      const rowCount = Math.ceil(displayedProducts.length / columnCount);
+                      const rowCount = Math.ceil(
+                        displayedProducts.length / columnCount
+                      );
                       const columnWidth = width / columnCount;
                       const rowHeight = 80; // Adjust based on your needs
 
@@ -819,7 +1221,7 @@ function POSScreen() {
                           {({ columnIndex, rowIndex, style }) => {
                             const index = rowIndex * columnCount + columnIndex;
                             const product = displayedProducts[index];
-                            
+
                             if (!product) return null;
 
                             return (
@@ -840,7 +1242,9 @@ function POSScreen() {
                                       product.price * backstagePriceMultiplier;
                                     addItemToSale({
                                       ...product,
-                                      price: isBackstage ? backstagePrice : product.price,
+                                      price: isBackstage
+                                        ? backstagePrice
+                                        : product.price,
                                     });
                                   }}
                                 >
@@ -848,11 +1252,16 @@ function POSScreen() {
                                     <Typography variant="body2" noWrap>
                                       {product.name}
                                     </Typography>
-                                    <Typography variant="caption" color="textSecondary">
+                                    <Typography
+                                      variant="caption"
+                                      color="textSecondary"
+                                    >
                                       {isBackstage
                                         ? `${(
                                             product.price *
-                                            (1 + settings.backstageMarginPercent / 100)
+                                            (1 +
+                                              settings.backstageMarginPercent /
+                                                100)
                                           ).toFixed(2)} ₺`
                                         : `${product.price} ₺`}
                                     </Typography>
@@ -869,6 +1278,19 @@ function POSScreen() {
               </Box>
             </Paper>
           </Box>
+        </Grid>
+
+        {/* Right panel: Image Gallery */}
+        <Grid item xs={4} sx={{ height: "100%", pt: 2 }}>
+          <ImageGallery
+            images={images}
+            onImageClick={(productName) => {
+              setFilterModal({
+                open: true,
+                searchTerm: productName,
+              });
+            }}
+          />
         </Grid>
       </Grid>
 
@@ -889,6 +1311,17 @@ function POSScreen() {
         open={showCategoryDialog}
         onClose={() => setShowCategoryDialog(false)}
         onAddCategory={handleAddCategory}
+      />
+
+      {/* Product Filter Modal */}
+      <ProductFilterModal
+        open={filterModal.open}
+        onClose={() => setFilterModal({ ...filterModal, open: false })}
+        products={products}
+        searchTerm={filterModal.searchTerm}
+        onAddToSale={addItemToSale}
+        isBackstage={isBackstage}
+        backstagePriceMultiplier={backstagePriceMultiplier}
       />
 
       {/* Notification Snackbar */}
