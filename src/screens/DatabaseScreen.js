@@ -69,6 +69,7 @@ function DatabaseScreen() {
   const fetchTableData = async (tableName) => {
     try {
       const data = await window.api.getTableData(tableName);
+      console.log(data);
       if (data.error) {
         showSnackbar(`Error: ${data.error}`, 'error');
         return;

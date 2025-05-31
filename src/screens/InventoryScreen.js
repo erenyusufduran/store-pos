@@ -28,6 +28,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useProducts } from "../contexts/ProductContext.js";
+import { useSupabase } from "../contexts/SupabaseContext.js";
 
 function InventoryScreen() {
   const {
@@ -39,6 +40,7 @@ function InventoryScreen() {
     updateProduct,
     deleteProduct,
   } = useProducts();
+  const { isOnline, fetchSupabaseData, syncSupabase } = useSupabase();
   const [displayedProducts, setDisplayedProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showAddProduct, setShowAddProduct] = useState(false);
@@ -316,6 +318,20 @@ function InventoryScreen() {
     }
   };
 
+  const syncEverything = async () => {
+    if (isOnline) {
+      await syncSupabase();
+      await fetchSupabaseData("categories", ["id", "name", "created_at"]);
+      await fetchSupabaseData("products", ["id", "name", "barcode", "price", "stock", "category_id", "purchase_price"]);
+    } else {
+      setNotification({
+        open: true,
+        message: "İnternet bağlantısı yok",
+        severity: "error",
+      });
+    }
+  };
+
   // Get category name by id
   const getCategoryName = (categoryId) => {
     if (!categoryId) return "Yok";
@@ -560,6 +576,7 @@ function InventoryScreen() {
             <Button onClick={handleAddProduct} color="primary">
               Ürün Ekle
             </Button>
+            <Button onClick={() => syncEverything()} color="primary">İşlemleri Senkronize Et</Button>
           </DialogActions>
         </Dialog>
 

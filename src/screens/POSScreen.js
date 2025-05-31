@@ -42,6 +42,7 @@ import { useSales } from "../contexts/SalesContext.js";
 import { FixedSizeGrid as GridVirtualized } from "react-window";
 import { FixedSizeList as ListVirtualized } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
+import { useAuth } from "../contexts/AuthContext.js";
 
 // Product Filter Modal Component
 const ProductFilterModal = React.memo(
@@ -158,7 +159,7 @@ const ImageGallery = React.memo(({ onImageClick, images }) => {
   // Remove duplicate images by using a Set
   const uniqueImages = useMemo(() => {
     const seen = new Set();
-    return images.filter(image => {
+    return images.filter((image) => {
       const duplicate = seen.has(image.title);
       seen.add(image.title);
       return !duplicate;
@@ -174,24 +175,23 @@ const ImageGallery = React.memo(({ onImageClick, images }) => {
         `${title} bottle`,
         `${title} drink`,
         `${title} alcohol`,
-        `${title} beverage`
+        `${title} beverage`,
       ];
 
       // Try each search term until we find an image
       for (const term of searchTerms) {
         try {
           // Use a proxy service to avoid CORS issues
-          const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.google.com/search?q=${term}&tbm=isch`)}`);
-          
-          if (response.ok) {
-            const html = await response.text();
-            // Extract image URL from the response
-            const imgMatch = html.match(/https:\/\/[^"]+\.(?:jpg|jpeg|png|gif)/i);
-            console.log(imgMatch)
-            if (imgMatch) {
-              return imgMatch[0];
-            }
-          }
+          //const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.google.com/search?q=${term}&tbm=isch`)}`);
+          //if (response.ok) {
+          //const html = await response.text();
+          // Extract image URL from the response
+          //const imgMatch = html.match(/https:\/\/[^"]+\.(?:jpg|jpeg|png|gif)/i);
+          //console.log(imgMatch)
+          //if (imgMatch) {
+          //return imgMatch[0];
+          //}
+          //}
         } catch (error) {
           console.error(`Error fetching image for term ${term}:`, error);
           continue;
@@ -199,7 +199,7 @@ const ImageGallery = React.memo(({ onImageClick, images }) => {
       }
       return null;
     } catch (error) {
-      console.error('Error in fetchProductImage:', error);
+      console.error("Error in fetchProductImage:", error);
       return null;
     }
   };
@@ -208,13 +208,13 @@ const ImageGallery = React.memo(({ onImageClick, images }) => {
   useEffect(() => {
     const loadImages = async () => {
       const newImageUrls = {};
-      
+
       for (const image of uniqueImages) {
         try {
           const productImage = await fetchProductImage(image.title);
           if (productImage) {
             // Verify the image URL is accessible
-            const imgResponse = await fetch(productImage, { method: 'HEAD' });
+            const imgResponse = await fetch(productImage, { method: "HEAD" });
             if (imgResponse.ok) {
               newImageUrls[image.title] = productImage;
             } else {
@@ -228,7 +228,7 @@ const ImageGallery = React.memo(({ onImageClick, images }) => {
           newImageUrls[image.title] = image.url;
         }
       }
-      
+
       setImageUrls(newImageUrls);
     };
 
@@ -316,58 +316,6 @@ const ImageGallery = React.memo(({ onImageClick, images }) => {
           </Box>
         ))}
       </Box>
-    </Paper>
-  );
-});
-
-// Main BarcodeScanner component
-const BarcodeScanner = React.memo(({ onProductScanned }) => {
-  const [barcode, setBarcode] = useState("");
-  const inputRef = useRef(null);
-
-  // Keep focus on the barcode input
-  useEffect(() => {
-    const focusInput = () => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    };
-
-    focusInput();
-
-    // Focus the input when window is clicked
-    window.addEventListener("enter", focusInput);
-
-    return () => {
-      window.removeEventListener("enter", focusInput);
-    };
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (barcode.trim() === "") return;
-
-    await onProductScanned(barcode);
-    setBarcode("");
-  };
-
-  return (
-    <Paper sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Ürün Tara
-      </Typography>
-      <form onSubmit={handleSubmit}>
-        <TextField
-          fullWidth
-          label="Barkod"
-          variant="outlined"
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          autoFocus
-          inputRef={inputRef}
-        />
-      </form>
     </Paper>
   );
 });
@@ -500,10 +448,14 @@ const NewProductDialog = React.memo(
 // New CategoryDialog component
 const CategoryDialog = React.memo(({ open, onClose, onAddCategory }) => {
   const [categoryName, setCategoryName] = useState("");
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (open) {
       setCategoryName("");
+      setTimeout(() => {
+        inputRef.current && inputRef.current.focus();
+      }, 100);
     }
   }, [open]);
 
@@ -530,6 +482,7 @@ const CategoryDialog = React.memo(({ open, onClose, onAddCategory }) => {
           fullWidth
           value={categoryName}
           onChange={(e) => setCategoryName(e.target.value)}
+          inputRef={inputRef}
         />
       </DialogContent>
       <DialogActions>
@@ -569,6 +522,7 @@ function POSScreen() {
     completeSale,
     getTotalAmount,
   } = useSales();
+  const { setShowAuthModal } = useAuth();
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryProducts, setCategoryProducts] = useState([]);
@@ -596,9 +550,17 @@ function POSScreen() {
   });
   const [images, setImages] = useState([
     // Alcoholic Beverages
-    { id: 1, url: "https://picsum.photos/200/200?random=1", title: "Red Label" },
+    {
+      id: 1,
+      url: "https://picsum.photos/200/200?random=1",
+      title: "Red Label",
+    },
     { id: 2, url: "https://picsum.photos/200/200?random=2", title: "CHIVAS" },
-    { id: 3, url: "https://picsum.photos/200/200?random=3", title: "Jack Daniels" },
+    {
+      id: 3,
+      url: "https://picsum.photos/200/200?random=3",
+      title: "Jack Daniels",
+    },
     { id: 4, url: "https://picsum.photos/200/200?random=4", title: "Bourbon" },
     // Beers
     { id: 5, url: "https://picsum.photos/200/200?random=5", title: "Efes" },
@@ -636,6 +598,7 @@ function POSScreen() {
       }
     };
 
+    setShowAuthModal(false);
     loadInitialData();
   }, []); // Empty dependency array since we only want to load once on mount
 
@@ -809,17 +772,6 @@ function POSScreen() {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setSettings((prev) => ({
-      ...prev,
-      [name]:
-        name === "taxRate" || name === "backstageMarginPercent"
-          ? parseFloat(value)
-          : value,
-    }));
-  };
-
   // Add focus effect
   useEffect(() => {
     const focusInput = () => {
@@ -829,10 +781,10 @@ function POSScreen() {
     };
 
     focusInput();
-    window.addEventListener('click', focusInput);
+    window.addEventListener("click", focusInput);
 
     return () => {
-      window.removeEventListener('click', focusInput);
+      window.removeEventListener("click", focusInput);
     };
   }, []);
 

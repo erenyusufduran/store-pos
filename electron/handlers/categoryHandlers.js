@@ -7,7 +7,7 @@ function setupCategoryHandlers() {
   });
 
   ipcMain.handle('add-category', (event, category) => {
-    const id = runExec('INSERT INTO categories (name) VALUES (?)', [category]);
+    const id = runExec('INSERT INTO categories (name, supabase_id) VALUES (?, ?)', [category, null]);
     return { id, name: category };
   });
 }

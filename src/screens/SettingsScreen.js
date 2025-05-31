@@ -43,6 +43,15 @@ function SettingsScreen() {
     loadSettings();
   }, []);
 
+  const handleCleanDatabase = async () => {
+    await window.api.cleanDatabase();
+    setNotification({
+      open: true,
+      message: 'Veritabanı temizlendi',
+      severity: 'success'
+    });
+  };
+
   // Handle settings changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -206,6 +215,17 @@ function SettingsScreen() {
             </Box>
           </Paper>
         </Grid>
+      </Grid>
+
+      <Grid item xs={12}>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h5" gutterBottom>
+            Veritabanı Temizle
+          </Typography>
+          <Button variant="contained" color="error" onClick={handleCleanDatabase}>
+            Veritabanı Temizle
+          </Button>
+        </Paper>
       </Grid>
 
       {/* Notification Snackbar */}

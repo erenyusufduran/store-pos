@@ -40,6 +40,7 @@ async function setupDatabase() {
         CREATE TABLE IF NOT EXISTS categories (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
+          supabase_id TEXT DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
@@ -51,6 +52,7 @@ async function setupDatabase() {
           purchase_price REAL DEFAULT 0,
           stock INTEGER DEFAULT 0,
           category_id INTEGER,
+          supabase_id TEXT DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (category_id) REFERENCES categories (id)
         );
@@ -73,40 +75,38 @@ async function setupDatabase() {
           FOREIGN KEY (sale_id) REFERENCES sales (id),
           FOREIGN KEY (product_id) REFERENCES products (id)
         );
+
+        CREATE TABLE IF NOT EXISTS settings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          key TEXT UNIQUE NOT NULL,
+          value TEXT NOT NULL,
+          supabase_id TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        INSERT OR IGNORE INTO settings (key, value) VALUES ('backstageMarginPercent', '0');
+        INSERT OR IGNORE INTO settings (key, value) VALUES ('adminPassword', 'admin123');
+        INSERT OR IGNORE INTO settings (key, value) VALUES ('adminPwd', 'admin123');
       `);
     } catch (err) {
       console.error("Error creating tables:", err);
       throw err;
     }
 
-    // Check if backstage columns exist in sales table
+    // Create categories table if it doesn't exist
     try {
-      const salesTableInfo = db.exec("PRAGMA table_info(sales);");
-      const hasBackstageColumns = salesTableInfo[0].values.some(
-        (col) => col[1] === "is_backstage" || col[1] === "back_margin_percentage"
-      );
-
-      if (!hasBackstageColumns) {
+      // Check if supabase_id column exists
+      const columns = db.exec(`PRAGMA table_info(categories);`);
+      const hasSupabaseId = columns[0].values.some(col => col[1] === 'supabase_id');
+      
+      if (!hasSupabaseId) {
         db.exec(`
-          ALTER TABLE sales ADD COLUMN is_backstage INTEGER DEFAULT 0;
-          ALTER TABLE sales ADD COLUMN back_margin_percentage REAL DEFAULT 0;
+          ALTER TABLE categories ADD COLUMN supabase_id TEXT DEFAULT NULL;
         `);
       }
     } catch (err) {
-      console.error("Error checking/adding backstage columns:", err);
-    }
-
-    // Check if purchase_price exists in products table
-    try {
-      const res = db.exec("PRAGMA table_info(products);");
-      const hasPurchasePrice = res[0].values.some(
-        (col) => col[1] === "purchase_price"
-      );
-      if (!hasPurchasePrice) {
-        db.exec("ALTER TABLE products ADD COLUMN purchase_price REAL DEFAULT 0;");
-      }
-    } catch (err) {
-      console.error("Error checking/adding purchase_price column:", err);
+      console.error("Error altering categories table:", err);
+      throw err;
     }
 
     // Save the database to disk

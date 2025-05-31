@@ -11,12 +11,11 @@
     "eject": "react-scripts eject",
     "electron:dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
     "clean": "taskkill /IM \"POS System.exe\" /F 2> nul || echo \"no process\" & rimraf release-builds",
-    "electron:build": "npm run clean && npm run build && electron-builder",
-    "postinstall": "electron-builder install-app-deps",
-    "package-win": "npm run build && electron-builder --win --x64",
+    "package-win": "env-cmd -f .env.example npm run build && electron-builder --win --x64",
     "package-win-l": "npm run clean && npm run build && electron-packager . \"POS System\" --platform=win64 --arch=x64 --out=release-builds --overwrite --asar=false --icon=assets/icon.ico --prune=true",
     "dist": "npm run clean && npm run build && electron-builder --win --publish never",
-    "make-installer": "npm run clean && npm run build && electron-builder --win nsis:x64"
+    "make-installer": "npm run clean && npm run build && electron-builder --win nsis:x64",
+    "setup:supabase": "node electron/supabase/setup.js"
   },
   "build": {
     "directories": {
@@ -72,10 +71,12 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.1.0",
     "@mui/material": "^7.1.0",
+    "@supabase/supabase-js": "^2.49.8",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron-is-dev": "^3.0.1",
     "electron-store": "^10.0.1",
+    "env-cmd": "^10.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.0",
